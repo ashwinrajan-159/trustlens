@@ -23,6 +23,7 @@ celery_app = Celery(
         "app.tasks.cross_document",
         "app.tasks.property",
         "app.tasks.financial",
+        "app.tasks.graph",
     ],
 )
 
@@ -40,6 +41,7 @@ celery_app.conf.update(
         "app.tasks.cross_document.*": {"queue": "default"},
         "app.tasks.property.*": {"queue": "default"},
         "app.tasks.financial.*": {"queue": "default"},
+        "app.tasks.graph.*": {"queue": "default"},
     },
     task_acks_on_failure_or_timeout=True,
     result_expires=3600,

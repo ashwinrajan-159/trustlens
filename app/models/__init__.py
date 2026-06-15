@@ -7,6 +7,7 @@ from app.models.business_profile import BusinessProfile
 from app.models.document import Document
 from app.models.extracted_entity import ExtractedEntity
 from app.models.fraud_signal import FraudSignal
+from app.models.graph_analysis import GraphAnalysis
 from app.models.identity_profile import IdentityProfile
 from app.models.ocr_result import OcrResult
 from app.models.property_profile import PropertyProfile
@@ -26,4 +27,5 @@ __all__ = [
     "IdentityProfile",
     "PropertyProfile",
     "BusinessProfile",
+    "GraphAnalysis",
 ]

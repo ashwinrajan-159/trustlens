@@ -17,7 +17,9 @@ from app.schemas.risk import (
     BusinessProfilePublic,
     CompletenessResponse,
     FraudSignalPublic,
+    GraphAnalysisPublic,
     IdentityProfilePublic,
+    NetworkResponse,
     PropertyProfilePublic,
     RiskAssessmentPublic,
 )
@@ -145,6 +147,30 @@ async def get_financial(
         application_id, user_id=user.id, role=user.role
     )
     return BusinessProfilePublic.model_validate(profile) if profile else None
+
+
+@router.get("/{application_id}/graph", response_model=GraphAnalysisPublic | None)
+async def get_graph(
+    application_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> GraphAnalysisPublic | None:
+    analysis = await ApplicationService(db).get_graph_analysis(
+        application_id, user_id=user.id, role=user.role
+    )
+    return GraphAnalysisPublic.model_validate(analysis) if analysis else None
+
+
+@router.get("/{application_id}/network", response_model=NetworkResponse)
+async def get_network(
+    application_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> NetworkResponse:
+    data = await ApplicationService(db).get_network(
+        application_id, user_id=user.id, role=user.role
+    )
+    return NetworkResponse(**data)
 
 
 @router.post("/{application_id}/submit", response_model=ApplicationPublic)

@@ -80,6 +80,38 @@ class BusinessProfilePublic(BaseModel):
     created_at: datetime
 
 
+class GraphAnalysisPublic(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    application_id: str
+    graph_risk_score: float
+    fraud_connections_count: int
+    shared_pan_count: int
+    shared_account_count: int
+    shared_property_count: int
+    ring_size: int
+    in_fraud_ring: bool
+    connected_application_ids: list | None
+    created_at: datetime
+
+
+class NetworkNode(BaseModel):
+    id: str
+    kind: str
+    label: str
+
+
+class NetworkEdge(BaseModel):
+    source: str
+    target: str
+
+
+class NetworkResponse(BaseModel):
+    nodes: list[NetworkNode]
+    edges: list[NetworkEdge]
+
+
 class IdentityProfilePublic(BaseModel):
     """Resolved identity for display — only masked PII is exposed."""
 

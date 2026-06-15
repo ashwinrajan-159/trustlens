@@ -111,13 +111,13 @@ async def run_financial_validation_async(application_id: str, *, session_factory
         await session.commit()
         log.info("financial.validated", application_id=application_id, signals=len(signals))
 
-    # Final step of the pipeline: recompute the risk score over all signals.
+    # Chain graph analysis (Phase 7), which recomputes the risk score (final step).
     try:
-        from app.tasks.fraud import compute_risk_assessment_async
+        from app.tasks.graph import run_graph_analysis_async
 
-        await compute_risk_assessment_async(application_id, session_factory=sf)
+        await run_graph_analysis_async(application_id, session_factory=sf)
     except Exception as exc:  # noqa: BLE001
-        log.error("financial.risk_chain_failed", application_id=application_id, error=str(exc))
+        log.error("financial.graph_chain_failed", application_id=application_id, error=str(exc))
     return {"status": "validated", "application_id": application_id, "signals": len(signals)}
 
 

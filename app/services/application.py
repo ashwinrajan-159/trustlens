@@ -158,6 +158,31 @@ class ApplicationService:
         )
         return list((await self.session.execute(stmt)).scalars().all())
 
+    async def get_graph_analysis(self, app_id: str, *, user_id: str, role: UserRole):
+        """Latest graph-analysis snapshot for an application (authorized)."""
+        from sqlalchemy import select
+
+        from app.models.graph_analysis import GraphAnalysis
+
+        await self.get_for_user(app_id, user_id=user_id, role=role)
+        stmt = (
+            select(GraphAnalysis)
+            .where(GraphAnalysis.application_id == app_id, GraphAnalysis.deleted_at.is_(None))
+            .order_by(GraphAnalysis.created_at.desc())
+            .limit(1)
+        )
+        return (await self.session.execute(stmt)).scalars().first()
+
+    async def get_network(self, app_id: str, *, user_id: str, role: UserRole) -> dict:
+        """Per-application entity network (nodes/edges, PII masked) for the analyst UI."""
+        from app.services import graph_intel
+        from app.tasks.graph import load_records
+
+        await self.get_for_user(app_id, user_id=user_id, role=role)
+        records = await load_records(self.session)
+        graph = graph_intel.build_graph(records)
+        return graph_intel.ego_network(graph, app_id)
+
     async def get_property(self, app_id: str, *, user_id: str, role: UserRole):
         """Latest property/collateral profile for an application (authorized)."""
         from sqlalchemy import select

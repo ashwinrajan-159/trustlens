@@ -25,6 +25,10 @@ pyotp==2.9.0                 # TOTP MFA for analyst/admin roles
 # Object storage (MinIO/S3)
 aioboto3==13.3.0
 
+# Graph intelligence (Phase 7) — NetworkX analytics; Neo4j optional prod persistence
+networkx==3.5
+# neo4j==6.2.0  # enable when persisting the graph to a Neo4j cluster
+
 # Logging / observability
 structlog==24.4.0
 prometheus-fastapi-instrumentator==7.0.0
