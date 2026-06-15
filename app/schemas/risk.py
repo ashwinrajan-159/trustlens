@@ -53,6 +53,33 @@ class CompletenessResponse(BaseModel):
     is_complete: bool
 
 
+class PropertyProfilePublic(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    application_id: str
+    survey_numbers: list | None
+    area: float | None
+    sale_consideration: float | None
+    valuation: float | None
+    valuation_ratio: float | None
+    is_inflated: bool
+    duplicate_collateral_app_ids: list | None
+    created_at: datetime
+
+
+class BusinessProfilePublic(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    application_id: str
+    itr_revenue: float | None
+    gst_revenue: float | None
+    net_profit: float | None
+    revenue_gap_ratio: float | None
+    created_at: datetime
+
+
 class IdentityProfilePublic(BaseModel):
     """Resolved identity for display — only masked PII is exposed."""
 

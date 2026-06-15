@@ -158,6 +158,36 @@ class ApplicationService:
         )
         return list((await self.session.execute(stmt)).scalars().all())
 
+    async def get_property(self, app_id: str, *, user_id: str, role: UserRole):
+        """Latest property/collateral profile for an application (authorized)."""
+        from sqlalchemy import select
+
+        from app.models.property_profile import PropertyProfile
+
+        await self.get_for_user(app_id, user_id=user_id, role=role)
+        stmt = (
+            select(PropertyProfile)
+            .where(PropertyProfile.application_id == app_id, PropertyProfile.deleted_at.is_(None))
+            .order_by(PropertyProfile.created_at.desc())
+            .limit(1)
+        )
+        return (await self.session.execute(stmt)).scalars().first()
+
+    async def get_financial(self, app_id: str, *, user_id: str, role: UserRole):
+        """Latest business/financial profile for an application (authorized)."""
+        from sqlalchemy import select
+
+        from app.models.business_profile import BusinessProfile
+
+        await self.get_for_user(app_id, user_id=user_id, role=role)
+        stmt = (
+            select(BusinessProfile)
+            .where(BusinessProfile.application_id == app_id, BusinessProfile.deleted_at.is_(None))
+            .order_by(BusinessProfile.created_at.desc())
+            .limit(1)
+        )
+        return (await self.session.execute(stmt)).scalars().first()
+
     async def get_completeness(self, app_id: str, *, user_id: str, role: UserRole) -> dict:
         """Document-completeness summary for an application (authorized)."""
         from sqlalchemy import select

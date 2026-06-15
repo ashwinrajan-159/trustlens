@@ -238,12 +238,72 @@ def _extract_form16(text: str) -> list[EntityDraft]:
     return out
 
 
+def _labeled_token(text: str, labels: list[str], etype: EntityType, *, conf: float = 0.8) -> EntityDraft | None:
+    """First whitespace-delimited token after a label (e.g. a survey/plot number)."""
+    raw, page = search_labeled_value(text, labels, anchor_start=True)
+    if not raw:
+        return None
+    token = raw.split()[0].strip(",.;:") if raw.split() else None
+    return EntityDraft(etype, token, confidence=conf, source_page=page) if token else None
+
+
+def _extract_sale_deed(text: str) -> list[EntityDraft]:
+    out: list[EntityDraft] = []
+    for d in (
+        _labeled_text(text, ["Purchaser", "Buyer", "Vendee", "in favour of", "Owner"], EntityType.OWNER_NAME),
+        _labeled_token(text, ["Survey No", "Survey Number", "S. No", "Plot No", "Khasra No"], EntityType.SURVEY_NUMBER),
+        _labeled_amount(text, ["Extent", "Built-up Area", "Plot Area", "Area", "Super Built Up Area"], EntityType.PROPERTY_AREA),
+        _labeled_amount(text, ["Sale Consideration", "Total Consideration", "Consideration", "Sale Value"], EntityType.SALE_CONSIDERATION),
+    ):
+        if d:
+            out.append(d)
+    return out
+
+
+def _extract_valuation(text: str) -> list[EntityDraft]:
+    out: list[EntityDraft] = []
+    for d in (
+        _labeled_token(text, ["Survey No", "Survey Number", "S. No", "Plot No"], EntityType.SURVEY_NUMBER),
+        _labeled_amount(text, ["Built-up Area", "Plot Area", "Area", "Extent"], EntityType.PROPERTY_AREA),
+        _labeled_amount(text, ["Fair Market Value", "Market Value", "Assessed Value", "Estimated Value", "Valuation"], EntityType.VALUATION_AMOUNT),
+    ):
+        if d:
+            out.append(d)
+    return out
+
+
+def _extract_itr(text: str) -> list[EntityDraft]:
+    out: list[EntityDraft] = []
+    for d in (
+        _labeled_amount(text, ["Gross Total Income", "Total Income", "Gross Receipts", "Turnover", "Total Revenue"], EntityType.REVENUE),
+        _labeled_amount(text, ["Net Profit", "Profit After Tax", "Net Income"], EntityType.NET_PROFIT),
+    ):
+        if d:
+            out.append(d)
+    return out
+
+
+def _extract_gst(text: str) -> list[EntityDraft]:
+    out: list[EntityDraft] = []
+    d = _labeled_amount(
+        text, ["Total Turnover", "Taxable Value", "Total Value of Supplies", "Aggregate Turnover"], EntityType.REVENUE
+    )
+    if d:
+        out.append(d)
+    return out
+
+
 _ROUTES = {
     DocumentType.SALARY_SLIP: _extract_salary_slip,
     DocumentType.PAN: _extract_pan_card,
     DocumentType.AADHAAR: _extract_aadhaar,
     DocumentType.BANK_STATEMENT: _extract_bank_statement,
     DocumentType.FORM_16: _extract_form16,
+    DocumentType.SALE_DEED: _extract_sale_deed,
+    DocumentType.TITLE_DEED: _extract_sale_deed,
+    DocumentType.VALUATION_REPORT: _extract_valuation,
+    DocumentType.ITR: _extract_itr,
+    DocumentType.GST_RETURN: _extract_gst,
 }
 
 

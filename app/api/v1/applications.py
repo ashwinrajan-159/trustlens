@@ -14,9 +14,11 @@ from app.schemas.application import (
 )
 from app.schemas.common import ERROR_RESPONSES, Page
 from app.schemas.risk import (
+    BusinessProfilePublic,
     CompletenessResponse,
     FraudSignalPublic,
     IdentityProfilePublic,
+    PropertyProfilePublic,
     RiskAssessmentPublic,
 )
 from app.services.application import ApplicationService
@@ -119,6 +121,30 @@ async def get_identity(
         application_id, user_id=user.id, role=user.role
     )
     return IdentityProfilePublic.model_validate(profile) if profile else None
+
+
+@router.get("/{application_id}/property", response_model=PropertyProfilePublic | None)
+async def get_property(
+    application_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> PropertyProfilePublic | None:
+    profile = await ApplicationService(db).get_property(
+        application_id, user_id=user.id, role=user.role
+    )
+    return PropertyProfilePublic.model_validate(profile) if profile else None
+
+
+@router.get("/{application_id}/financial", response_model=BusinessProfilePublic | None)
+async def get_financial(
+    application_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> BusinessProfilePublic | None:
+    profile = await ApplicationService(db).get_financial(
+        application_id, user_id=user.id, role=user.role
+    )
+    return BusinessProfilePublic.model_validate(profile) if profile else None
 
 
 @router.post("/{application_id}/submit", response_model=ApplicationPublic)

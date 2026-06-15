@@ -116,12 +116,13 @@ async def run_cross_document_validation_async(application_id: str, *, session_fa
         await session.commit()
         log.info("crossdoc.validated", application_id=application_id, signals=len(results))
 
+    # Chain property validation (Phase 6) → financial → risk.
     try:
-        from app.tasks.fraud import compute_risk_assessment_async
+        from app.tasks.property import run_property_validation_async
 
-        await compute_risk_assessment_async(application_id, session_factory=sf)
+        await run_property_validation_async(application_id, session_factory=sf)
     except Exception as exc:  # noqa: BLE001
-        log.error("crossdoc.risk_chain_failed", application_id=application_id, error=str(exc))
+        log.error("crossdoc.property_chain_failed", application_id=application_id, error=str(exc))
     return {"status": "validated", "application_id": application_id, "signals": len(results)}
 
 

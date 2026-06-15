@@ -21,6 +21,8 @@ celery_app = Celery(
         "app.tasks.fraud",
         "app.tasks.identity",
         "app.tasks.cross_document",
+        "app.tasks.property",
+        "app.tasks.financial",
     ],
 )
 
@@ -36,6 +38,8 @@ celery_app.conf.update(
         "app.tasks.fraud.*": {"queue": "default"},
         "app.tasks.identity.*": {"queue": "default"},
         "app.tasks.cross_document.*": {"queue": "default"},
+        "app.tasks.property.*": {"queue": "default"},
+        "app.tasks.financial.*": {"queue": "default"},
     },
     task_acks_on_failure_or_timeout=True,
     result_expires=3600,
