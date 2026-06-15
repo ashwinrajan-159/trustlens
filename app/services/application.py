@@ -158,6 +158,35 @@ class ApplicationService:
         )
         return list((await self.session.execute(stmt)).scalars().all())
 
+    async def get_completeness(self, app_id: str, *, user_id: str, role: UserRole) -> dict:
+        """Document-completeness summary for an application (authorized)."""
+        from sqlalchemy import select
+
+        from app.models.document import Document
+        from app.models.enums import DocumentStatus
+        from app.services.cross_document import compute_completeness
+
+        app = await self.get_for_user(app_id, user_id=user_id, role=role)
+        docs = (
+            await self.session.execute(
+                select(Document).where(
+                    Document.application_id == app_id,
+                    Document.deleted_at.is_(None),
+                    Document.is_current_version.is_(True),
+                    Document.status == DocumentStatus.PROCESSED,
+                )
+            )
+        ).scalars().all()
+        present = sorted({d.document_type.value for d in docs})
+        missing_critical, missing_recommended = compute_completeness(app.loan_type.value, set(present))
+        return {
+            "loan_type": app.loan_type,
+            "present": present,
+            "missing_critical": missing_critical,
+            "missing_recommended": missing_recommended,
+            "is_complete": not missing_critical,
+        }
+
     async def get_identity(self, app_id: str, *, user_id: str, role: UserRole):
         """Latest resolved identity profile for an application (authorized)."""
         from sqlalchemy import select

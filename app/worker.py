@@ -15,7 +15,13 @@ celery_app = Celery(
     "trustlens",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["app.tasks.ocr", "app.tasks.extraction", "app.tasks.fraud", "app.tasks.identity"],
+    include=[
+        "app.tasks.ocr",
+        "app.tasks.extraction",
+        "app.tasks.fraud",
+        "app.tasks.identity",
+        "app.tasks.cross_document",
+    ],
 )
 
 celery_app.conf.update(
@@ -29,6 +35,7 @@ celery_app.conf.update(
         "app.tasks.extraction.*": {"queue": "default"},
         "app.tasks.fraud.*": {"queue": "default"},
         "app.tasks.identity.*": {"queue": "default"},
+        "app.tasks.cross_document.*": {"queue": "default"},
     },
     task_acks_on_failure_or_timeout=True,
     result_expires=3600,

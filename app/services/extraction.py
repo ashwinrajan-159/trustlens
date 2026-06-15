@@ -50,6 +50,21 @@ def parse_amount(s: str) -> float | None:
         return None
 
 
+_NUMBER_RE = re.compile(r"[0-9][0-9,]*(?:\.[0-9]{1,2})?")
+
+
+def _largest_amount(line: str) -> float | None:
+    """Largest numeric value on a line — used for bank rows where the amount trails
+    the date/narration columns."""
+    vals: list[float] = []
+    for raw in _NUMBER_RE.findall(line):
+        try:
+            vals.append(float(raw.replace(",", "")))
+        except ValueError:
+            continue
+    return max(vals) if vals else None
+
+
 def search_labeled_value(
     text: str, labels: list[str], *, anchor_start: bool = False
 ) -> tuple[str | None, int | None]:
@@ -202,6 +217,13 @@ def _extract_bank_statement(text: str) -> list[EntityDraft]:
     ):
         if d:
             out.append(d)
+    # Salary-credit lines: any statement row mentioning salary. Bank rows put the amount
+    # in the trailing column, so take the LARGEST number on the line (ignores dates).
+    for i, line in enumerate(text.splitlines()):
+        if re.search(r"\b(salary|sal\s*cr|sal\s*credit|neft.*sal)\b", line, re.IGNORECASE):
+            amt = _largest_amount(line)
+            if amt and amt >= 1000:
+                out.append(EntityDraft(EntityType.SALARY_CREDIT, f"{amt:.2f}", confidence=0.7, source_page=i + 1))
     return out
 
 

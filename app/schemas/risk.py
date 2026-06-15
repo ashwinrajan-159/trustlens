@@ -5,7 +5,13 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models.enums import FraudSignalType, RiskTier, SignalScope, SignalSeverity
+from app.models.enums import (
+    FraudSignalType,
+    LoanType,
+    RiskTier,
+    SignalScope,
+    SignalSeverity,
+)
 
 
 class FraudSignalPublic(BaseModel):
@@ -37,6 +43,14 @@ class RiskAssessmentPublic(BaseModel):
     by_category: dict | None
     engine_version: str
     created_at: datetime
+
+
+class CompletenessResponse(BaseModel):
+    loan_type: LoanType
+    present: list[str]
+    missing_critical: list[str]
+    missing_recommended: list[str]
+    is_complete: bool
 
 
 class IdentityProfilePublic(BaseModel):

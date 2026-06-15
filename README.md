@@ -20,7 +20,8 @@ Built in phases per `TRUSTLENS_BUILD_SPEC.md`.
 | 3a | Extraction: layout-agnostic entity extraction (`extracted_entities`), chained after OCR, masked view endpoints | ✅ done |
 | 3b | Single-doc `fraud_engine` (standalone, Verhoeff/PAN/IFSC/GSTIN validators) + weighted risk scoring → tier | ✅ done |
 | 4 | Identity intelligence: cross-document resolution + synthetic-identity detection (`identity_profiles`) | ✅ done |
-| 5+ | Cross-doc/income, property/financial, graph, events, ML, cases, frontend | ⏳ |
+| 5 | Cross-document: home-loan completeness checklist + salary↔bank income reconciliation | ✅ done |
+| 6+ | Property/financial intel, graph, events, ML, cases, frontend | ⏳ |
 | … | see spec | ⏳ |
 
 ## Stack (Phase 1)

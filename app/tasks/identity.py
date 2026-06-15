@@ -120,13 +120,13 @@ async def run_identity_resolution_async(application_id: str, *, session_factory=
             identity_signals=len(signals),
         )
 
-    # Chain the risk recompute so identity signals are reflected in the score.
+    # Chain cross-document validation (Phase 5), which in turn recomputes risk.
     try:
-        from app.tasks.fraud import compute_risk_assessment_async
+        from app.tasks.cross_document import run_cross_document_validation_async
 
-        await compute_risk_assessment_async(application_id, session_factory=sf)
+        await run_cross_document_validation_async(application_id, session_factory=sf)
     except Exception as exc:  # noqa: BLE001
-        log.error("identity.risk_chain_failed", application_id=application_id, error=str(exc))
+        log.error("identity.crossdoc_chain_failed", application_id=application_id, error=str(exc))
     return {
         "status": "resolved",
         "application_id": application_id,

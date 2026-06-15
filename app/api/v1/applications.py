@@ -14,6 +14,7 @@ from app.schemas.application import (
 )
 from app.schemas.common import ERROR_RESPONSES, Page
 from app.schemas.risk import (
+    CompletenessResponse,
     FraudSignalPublic,
     IdentityProfilePublic,
     RiskAssessmentPublic,
@@ -94,6 +95,18 @@ async def get_risk(
         application_id, user_id=user.id, role=user.role
     )
     return RiskAssessmentPublic.model_validate(risk) if risk else None
+
+
+@router.get("/{application_id}/completeness", response_model=CompletenessResponse)
+async def get_completeness(
+    application_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CompletenessResponse:
+    data = await ApplicationService(db).get_completeness(
+        application_id, user_id=user.id, role=user.role
+    )
+    return CompletenessResponse(**data)
 
 
 @router.get("/{application_id}/identity", response_model=IdentityProfilePublic | None)
