@@ -1,0 +1,40 @@
+# Mirror .gitignore + exclude things never needed in the image build context.
+.git/
+.gitignore
+.github/
+
+# Python caches / venvs
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Secrets & local data — must never enter an image layer
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.db
+*.sqlite3
+minio-data/
+postgres-data/
+redis-data/
+
+# Tests & docs (not needed at runtime)
+tests/
+*.md
+!README.md
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log

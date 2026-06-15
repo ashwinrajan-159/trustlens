@@ -1,0 +1,87 @@
+# TrustLens AI — local dev stack.
+# Workers are behind the `workers` profile (Phase 2): `docker compose --profile workers up`.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: trustlens
+      POSTGRES_PASSWORD: trustlens
+      POSTGRES_DB: trustlens
+    ports: ["5432:5432"]
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trustlens"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports: ["9000:9000", "9001:9001"]
+    volumes: ["minio-data:/data"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # One-shot migration job — runs to completion, then the api/worker start (#16).
+  migrate:
+    build: .
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://trustlens:trustlens@postgres:5432/trustlens
+    depends_on:
+      postgres: {condition: service_healthy}
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+
+  api:
+    build: .
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://trustlens:trustlens@postgres:5432/trustlens
+      STORAGE_ENDPOINT_URL: http://minio:9000
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      USE_REDIS_TOKEN_STORE: "true"
+    ports: ["8000:8000"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      minio: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  # Celery worker — wired in Phase 2. Enable with: docker compose --profile workers up
+  worker:
+    build: .
+    profiles: ["workers"]
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://trustlens:trustlens@postgres:5432/trustlens
+      STORAGE_ENDPOINT_URL: http://minio:9000
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    command: ["celery", "-A", "app.worker.celery_app", "worker", "--loglevel=info"]
+
+volumes:
+  postgres-data:
+  minio-data:

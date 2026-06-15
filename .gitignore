@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# Secrets / config — NEVER commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local data
+*.db
+*.sqlite3
+minio-data/
+postgres-data/
+redis-data/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/

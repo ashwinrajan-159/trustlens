@@ -1,0 +1,47 @@
+# ── TrustLens AI — Phase 1 (Foundations) dependencies ──
+# Web / API
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+
+# Data / ORM
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+aiosqlite==0.20.0            # test DB (SQLite in-memory)
+
+# Settings / validation
+pydantic==2.10.4
+pydantic-settings==2.7.0
+email-validator==2.2.0
+
+# Auth / security
+python-jose[cryptography]==3.3.0
+argon2-cffi==23.1.0          # primary password hash (maintained; bcrypt fallback)
+bcrypt==4.2.1                # legacy-hash verification fallback
+cryptography==44.0.0
+pyotp==2.9.0                 # TOTP MFA for analyst/admin roles
+
+# Object storage (MinIO/S3)
+aioboto3==13.3.0
+
+# Logging / observability
+structlog==24.4.0
+prometheus-fastapi-instrumentator==7.0.0
+
+# Async queue (Celery + Redis broker/result backend)
+celery==5.4.0
+redis==5.2.1
+
+# OCR / document text extraction (Phase 2)
+# PyMuPDF: digital-PDF text layer (always installed — the baseline engine).
+pymupdf==1.27.2
+# PaddleOCR: real OCR for scanned docs/images. Heavy native dep — install separately
+# in the worker image when scanned-image OCR is needed:
+#   pip install paddleocr paddlepaddle pillow numpy
+
+# Testing
+pytest==8.3.4
+pytest-asyncio==0.25.0
+pytest-cov==6.0.0
+httpx==0.28.1

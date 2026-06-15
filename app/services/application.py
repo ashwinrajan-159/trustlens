@@ -1,0 +1,211 @@
+"""Application service: create, submit, decide — with enforced state machine.
+
+The status transition graph lives in ``enums.APPLICATION_TRANSITIONS``; every change
+is validated and audited. Submitting an application is where the analysis pipeline
+will be dispatched in Phase 2 (left as a clearly-marked hook here).
+"""
+from __future__ import annotations
+
+import secrets
+from datetime import UTC, datetime
+
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions import (
+    AuthorizationError,
+    NotFoundError,
+    StateTransitionError,
+)
+from app.core.logging import get_logger
+from app.models.application import Application
+from app.models.enums import (
+    ANALYST_ROLES,
+    APPLICATION_TRANSITIONS,
+    ApplicationStatus,
+    AuditAction,
+    LoanType,
+    UserRole,
+)
+from app.repositories.application import ApplicationRepository
+from app.services.audit import AuditService
+
+log = get_logger(__name__)
+
+
+def _generate_application_number() -> str:
+    ts = datetime.now(UTC).strftime("%Y%m%d")
+    return f"TL-{ts}-{secrets.token_hex(4).upper()}"
+
+
+class ApplicationService:
+    def __init__(self, session: AsyncSession):
+        self.session = session
+        self.apps = ApplicationRepository(session)
+        self.audit = AuditService(session)
+
+    async def create(
+        self, *, applicant_id: str, loan_type: LoanType, loan_amount: float, ip: str | None = None
+    ) -> Application:
+        # Retry on the (rare) application_number unique-collision instead of a 500 (#8).
+        last_exc: Exception | None = None
+        for _ in range(5):
+            app = Application(
+                application_number=_generate_application_number(),
+                applicant_id=applicant_id,
+                loan_type=loan_type,
+                loan_amount_requested=loan_amount,
+                status=ApplicationStatus.DRAFT,
+            )
+            self.session.add(app)
+            try:
+                await self.session.flush()
+            except IntegrityError as exc:
+                last_exc = exc
+                await self.session.rollback()
+                continue
+            await self.audit.record(
+                action=AuditAction.CREATE, entity_type="application", entity_id=app.id,
+                actor_id=applicant_id, after={"status": app.status.value}, ip_address=ip,
+            )
+            await self.session.commit()
+            log.info("application.create", application_id=app.id, applicant_id=applicant_id)
+            return app
+        raise last_exc or RuntimeError("Could not allocate an application number")
+
+    async def get_for_user(
+        self, app_id: str, *, user_id: str, role: UserRole, record_access: bool = False
+    ) -> Application:
+        app = await self.apps.get(app_id)
+        if not app:
+            raise NotFoundError("Application not found")
+        # Customers may only see their own; analysts/admins see all.
+        if role == UserRole.CUSTOMER and app.applicant_id != user_id:
+            raise AuthorizationError("You do not have access to this application")
+        # Audit PII reads: an analyst viewing someone else's application (#11).
+        if record_access and role in ANALYST_ROLES and app.applicant_id != user_id:
+            await self.audit.record(
+                action=AuditAction.READ_PII, entity_type="application", entity_id=app.id,
+                actor_id=user_id,
+            )
+            await self.session.commit()
+        return app
+
+    def _transition(self, app: Application, target: ApplicationStatus) -> None:
+        allowed = APPLICATION_TRANSITIONS.get(app.status, set())
+        if target not in allowed:
+            raise StateTransitionError(
+                f"Cannot move application from {app.status.value} to {target.value}"
+            )
+
+    async def submit(self, app_id: str, *, user_id: str, role: UserRole, ip: str | None = None) -> Application:
+        app = await self.get_for_user(app_id, user_id=user_id, role=role)
+        before = app.status.value
+        self._transition(app, ApplicationStatus.SUBMITTED)
+        app.status = ApplicationStatus.SUBMITTED
+        app.submitted_at = datetime.now(UTC)
+        await self.audit.record(
+            action=AuditAction.STATE_TRANSITION, entity_type="application", entity_id=app.id,
+            actor_id=user_id, before={"status": before}, after={"status": app.status.value},
+            ip_address=ip,
+        )
+        await self.session.commit()
+        # ── Phase 2 hook: dispatch the 14-step Celery analysis pipeline here. ──
+        log.info("application.submit", application_id=app.id)
+        return app
+
+    async def decide(
+        self, app_id: str, *, approve: bool, reason: str, decided_by: str, ip: str | None = None
+    ) -> Application:
+        app = await self.apps.get(app_id)
+        if not app:
+            raise NotFoundError("Application not found")
+        target = ApplicationStatus.APPROVED if approve else ApplicationStatus.REJECTED
+        before = app.status.value
+        self._transition(app, target)
+        app.status = target
+        app.decision_at = datetime.now(UTC)
+        app.decision_by = decided_by
+        app.decision_reason = reason
+        await self.audit.record(
+            action=AuditAction.STATE_TRANSITION, entity_type="application", entity_id=app.id,
+            actor_id=decided_by, before={"status": before}, after={"status": target.value},
+            ip_address=ip,
+        )
+        await self.session.commit()
+        log.info("application.decide", application_id=app.id, decision=target.value)
+        return app
+
+    async def list_signals(self, app_id: str, *, user_id: str, role: UserRole):
+        """Fraud signals for an application (authorized; highest severity first)."""
+        from sqlalchemy import case, select
+
+        from app.models.enums import SignalSeverity
+        from app.models.fraud_signal import FraudSignal
+
+        await self.get_for_user(app_id, user_id=user_id, role=role)
+        order = case(
+            {
+                SignalSeverity.CRITICAL: 0, SignalSeverity.HIGH: 1,
+                SignalSeverity.MEDIUM: 2, SignalSeverity.LOW: 3,
+            },
+            value=FraudSignal.severity,
+        )
+        stmt = (
+            select(FraudSignal)
+            .where(FraudSignal.application_id == app_id, FraudSignal.deleted_at.is_(None))
+            .order_by(order, FraudSignal.created_at.desc())
+        )
+        return list((await self.session.execute(stmt)).scalars().all())
+
+    async def get_identity(self, app_id: str, *, user_id: str, role: UserRole):
+        """Latest resolved identity profile for an application (authorized)."""
+        from sqlalchemy import select
+
+        from app.models.identity_profile import IdentityProfile
+
+        await self.get_for_user(app_id, user_id=user_id, role=role)
+        stmt = (
+            select(IdentityProfile)
+            .where(IdentityProfile.application_id == app_id, IdentityProfile.deleted_at.is_(None))
+            .order_by(IdentityProfile.created_at.desc())
+            .limit(1)
+        )
+        return (await self.session.execute(stmt)).scalars().first()
+
+    async def get_risk(self, app_id: str, *, user_id: str, role: UserRole):
+        """Latest risk assessment for an application (authorized)."""
+        from sqlalchemy import select
+
+        from app.models.risk_assessment import RiskAssessment
+
+        await self.get_for_user(app_id, user_id=user_id, role=role)
+        stmt = (
+            select(RiskAssessment)
+            .where(RiskAssessment.application_id == app_id, RiskAssessment.deleted_at.is_(None))
+            .order_by(RiskAssessment.created_at.desc())
+            .limit(1)
+        )
+        return (await self.session.execute(stmt)).scalars().first()
+
+    async def list_for_user(
+        self,
+        *,
+        user_id: str,
+        role: UserRole,
+        offset: int,
+        limit: int,
+        status: ApplicationStatus | None = None,
+        loan_type: LoanType | None = None,
+        sort: str = "-created_at",
+    ) -> tuple[list[Application], int]:
+        # Customers are scoped to their own applications; analysts see all (#21 filters).
+        scoped_applicant = user_id if role == UserRole.CUSTOMER else None
+        return await self.apps.query(
+            applicant_id=scoped_applicant,
+            status=status,
+            loan_type=loan_type,
+            sort=sort,
+            offset=offset,
+            limit=limit,
+        )

@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff mypy bandit pip-audit
+      - name: Lint (ruff)
+        run: ruff check app tests
+      - name: Type check (mypy)
+        run: mypy app || true   # advisory until annotations are tightened
+      - name: Security scan (bandit)
+        run: bandit -r app -ll
+      - name: Dependency audit (pip-audit)
+        run: pip-audit -r requirements.txt || true   # advisory; don't block on upstream CVEs
+      - name: Tests + coverage
+        env:
+          ENVIRONMENT: test
+          JWT_SECRET_KEY: ci-test-secret-key-not-for-production-use-only
+          FERNET_KEY: zXqQ4n8s2rT6vY9bB1dD3fF5hH7jJ0kK2lL4mM6nN8o=
+        run: pytest
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
