@@ -24,6 +24,7 @@ celery_app = Celery(
         "app.tasks.property",
         "app.tasks.financial",
         "app.tasks.graph",
+        "app.tasks.events",
     ],
 )
 
@@ -42,6 +43,7 @@ celery_app.conf.update(
         "app.tasks.property.*": {"queue": "default"},
         "app.tasks.financial.*": {"queue": "default"},
         "app.tasks.graph.*": {"queue": "default"},
+        "app.tasks.events.*": {"queue": "default"},
     },
     task_acks_on_failure_or_timeout=True,
     result_expires=3600,

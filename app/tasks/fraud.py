@@ -196,7 +196,20 @@ async def compute_risk_assessment_async(application_id: str, *, session_factory=
         )
         application.current_risk_score = outcome.total_score
         application.risk_tier = RiskTier(outcome.risk_tier)
+
+        # Emit RISK_CALCULATED (transactional outbox — committed with the assessment).
+        from app.core.security import new_id
+        from app.events import schemas as ev
+        from app.events.service import publish_pending, stage
+
+        stage(session, ev.risk_calculated(
+            new_id(), application_id,
+            score=outcome.total_score, tier=outcome.risk_tier, signal_count=len(signals)))
         await session.commit()
+        try:
+            await publish_pending(session)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("events.relay_failed", error=str(exc))
         log.info(
             "risk.assessed",
             application_id=application_id,

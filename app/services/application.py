@@ -18,6 +18,9 @@ from app.core.exceptions import (
     StateTransitionError,
 )
 from app.core.logging import get_logger
+from app.core.security import new_id
+from app.events import schemas as ev
+from app.events.service import publish_pending, stage
 from app.models.application import Application
 from app.models.enums import (
     ANALYST_ROLES,
@@ -31,6 +34,14 @@ from app.repositories.application import ApplicationRepository
 from app.services.audit import AuditService
 
 log = get_logger(__name__)
+
+
+async def _relay(session) -> None:
+    """Best-effort relay of staged events after commit (no-op-safe)."""
+    try:
+        await publish_pending(session)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("events.relay_failed", error=str(exc))
 
 
 def _generate_application_number() -> str:
@@ -68,7 +79,10 @@ class ApplicationService:
                 action=AuditAction.CREATE, entity_type="application", entity_id=app.id,
                 actor_id=applicant_id, after={"status": app.status.value}, ip_address=ip,
             )
+            stage(self.session, ev.application_created(
+                new_id(), app.id, applicant_id=applicant_id, loan_type=loan_type.value))
             await self.session.commit()
+            await _relay(self.session)
             log.info("application.create", application_id=app.id, applicant_id=applicant_id)
             return app
         raise last_exc or RuntimeError("Could not allocate an application number")
@@ -109,7 +123,9 @@ class ApplicationService:
             actor_id=user_id, before={"status": before}, after={"status": app.status.value},
             ip_address=ip,
         )
+        stage(self.session, ev.application_submitted(new_id(), app.id))
         await self.session.commit()
+        await _relay(self.session)
         # ── Phase 2 hook: dispatch the 14-step Celery analysis pipeline here. ──
         log.info("application.submit", application_id=app.id)
         return app
@@ -132,7 +148,10 @@ class ApplicationService:
             actor_id=decided_by, before={"status": before}, after={"status": target.value},
             ip_address=ip,
         )
+        stage(self.session, ev.analyst_decision_made(
+            new_id(), app.id, decision=target.value, decided_by=decided_by))
         await self.session.commit()
+        await _relay(self.session)
         log.info("application.decide", application_id=app.id, decision=target.value)
         return app
 

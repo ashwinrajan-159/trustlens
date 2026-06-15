@@ -24,6 +24,11 @@ CORRELATION_HEADER = "X-Correlation-ID"
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     log.info("app.startup", environment=settings.environment)
+    # Subscribe the real-time risk engine to the in-process event bus (memory backend),
+    # so API-triggered events are reacted to sub-second.
+    from app.events.consumer import get_realtime_engine
+
+    get_realtime_engine()
     yield
     log.info("app.shutdown")
 

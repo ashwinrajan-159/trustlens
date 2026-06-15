@@ -23,7 +23,8 @@ Built in phases per `TRUSTLENS_BUILD_SPEC.md`.
 | 5 | Cross-document: home-loan completeness checklist + salary↔bank income reconciliation | ✅ done |
 | 6 | Property intel (owner/survey/area/inflated-valuation, cross-app duplicate collateral) + financial recon (revenue mismatch, impossible ratio) | ✅ done |
 | 7 | Graph intel (NetworkX): shared-PAN / mule-account / duplicate-collateral networks, fraud rings, high-centrality hubs; per-app network endpoint | ✅ done |
-| 8+ | Events/streaming, ML platform, cases/alerts, frontend | ⏳ |
+| 8 | Events: versioned PII-free schemas, transactional outbox (`event_log`) dual-write, relay + reconciliation/replay, real-time engine | ✅ done |
+| 9+ | ML platform (local), cases/alerts, frontend | ⏳ |
 | … | see spec | ⏳ |
 
 ## Stack (Phase 1)

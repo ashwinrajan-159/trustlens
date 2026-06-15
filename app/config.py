@@ -67,6 +67,11 @@ class Settings(BaseSettings):
     storage_region: str = "us-east-1"
     presigned_url_ttl_seconds: int = 900
 
+    # ── Events / streaming ──
+    # "memory" (dev/test, in-process bus) or "kafka" (prod). Kafka runs locally too.
+    events_backend: str = "memory"
+    kafka_bootstrap_servers: str = "localhost:9092"
+
     # ── Redis / Celery ──
     # Refresh-token rotation store. False -> in-memory (dev/test); True -> Redis (prod).
     use_redis_token_store: bool = False

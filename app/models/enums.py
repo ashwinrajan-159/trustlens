@@ -153,6 +153,53 @@ class ExtractionMethod(str, enum.Enum):
     LAYOUT = "LAYOUT"
 
 
+class EventType(str, enum.Enum):
+    """Versioned domain events. Topic = ``trustlens.<entity>.<action>`` (see TOPIC_MAP).
+    Payloads carry IDs + correlation_id + safe scalars only — never PII."""
+
+    APPLICATION_CREATED = "APPLICATION_CREATED"
+    APPLICATION_SUBMITTED = "APPLICATION_SUBMITTED"
+    DOCUMENT_UPLOADED = "DOCUMENT_UPLOADED"
+    RISK_CALCULATED = "RISK_CALCULATED"
+    FRAUD_SIGNAL_GENERATED = "FRAUD_SIGNAL_GENERATED"
+    FRAUD_ALERT_GENERATED = "FRAUD_ALERT_GENERATED"
+    CASE_CREATED = "CASE_CREATED"
+    CASE_CLOSED = "CASE_CLOSED"
+    ANALYST_DECISION_MADE = "ANALYST_DECISION_MADE"
+    IDENTITY_FLAGGED = "IDENTITY_FLAGGED"
+    PROPERTY_FLAGGED = "PROPERTY_FLAGGED"
+    FRAUD_RING_DETECTED = "FRAUD_RING_DETECTED"
+    MODEL_PREDICTION_GENERATED = "MODEL_PREDICTION_GENERATED"
+
+
+# EventType → Kafka topic (trustlens.<entity>.<action>).
+TOPIC_MAP: dict[EventType, str] = {
+    EventType.APPLICATION_CREATED: "trustlens.application.created",
+    EventType.APPLICATION_SUBMITTED: "trustlens.application.submitted",
+    EventType.DOCUMENT_UPLOADED: "trustlens.document.uploaded",
+    EventType.RISK_CALCULATED: "trustlens.risk.calculated",
+    EventType.FRAUD_SIGNAL_GENERATED: "trustlens.fraud_signal.generated",
+    EventType.FRAUD_ALERT_GENERATED: "trustlens.fraud_alert.generated",
+    EventType.CASE_CREATED: "trustlens.case.created",
+    EventType.CASE_CLOSED: "trustlens.case.closed",
+    EventType.ANALYST_DECISION_MADE: "trustlens.analyst.decision_made",
+    EventType.IDENTITY_FLAGGED: "trustlens.identity.flagged",
+    EventType.PROPERTY_FLAGGED: "trustlens.property.flagged",
+    EventType.FRAUD_RING_DETECTED: "trustlens.fraud_ring.detected",
+    EventType.MODEL_PREDICTION_GENERATED: "trustlens.model.prediction_generated",
+}
+
+
+def dlq_topic(topic: str) -> str:
+    return f"trustlens.dlq.{topic}"
+
+
+class EventStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    SENT = "SENT"
+    FAILED = "FAILED"
+
+
 class SignalSeverity(str, enum.Enum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"

@@ -114,6 +114,16 @@ async def run_graph_analysis_async(application_id: str, *, session_factory=None)
                 connected_application_ids=summary.connected_application_ids,
             )
         )
+        # Emit FRAUD_RING_DETECTED when this application sits in a ring (outbox).
+        if summary.in_fraud_ring:
+            from app.core.security import new_id
+            from app.events import schemas as ev
+            from app.events.service import stage
+
+            stage(session, ev.fraud_ring_detected(
+                new_id(), application_id,
+                ring_size=summary.ring_size,
+                application_ids=summary.connected_application_ids))
         await session.commit()
         log.info(
             "graph.analyzed",

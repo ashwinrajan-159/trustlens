@@ -5,6 +5,7 @@ from app.models.audit_log import AuditLog
 from app.models.base import Base
 from app.models.business_profile import BusinessProfile
 from app.models.document import Document
+from app.models.event_log import EventLog
 from app.models.extracted_entity import ExtractedEntity
 from app.models.fraud_signal import FraudSignal
 from app.models.graph_analysis import GraphAnalysis
@@ -28,4 +29,5 @@ __all__ = [
     "PropertyProfile",
     "BusinessProfile",
     "GraphAnalysis",
+    "EventLog",
 ]

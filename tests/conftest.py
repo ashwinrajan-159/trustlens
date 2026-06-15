@@ -70,11 +70,17 @@ class FakeStorage:
 async def _setup_db():
     from app.core.ratelimit import reset_rate_limiter
     from app.core.token_store import reset_token_store
+    from app.events.consumer import get_realtime_engine, reset_realtime_engine
+    from app.events.publisher import reset_publisher
     from app.services.ocr import set_engine_override
 
     reset_token_store()
     reset_rate_limiter()
     set_engine_override(None)
+    # Fresh in-process event bus per test, with the real-time engine subscribed.
+    reset_realtime_engine()
+    reset_publisher()
+    get_realtime_engine()
     async with _engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
