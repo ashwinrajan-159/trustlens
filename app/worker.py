@@ -8,6 +8,7 @@ making redelivery safe (every task is idempotent). Tasks are registered by impor
 from __future__ import annotations
 
 from celery import Celery
+from celery.signals import worker_ready
 
 from app.config import settings
 
@@ -50,3 +51,14 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
 )
+
+
+@worker_ready.connect
+def _init_realtime(**_):  # pragma: no cover - runs only inside a live worker
+    """Subscribe the real-time engine + install the alert escalation hook so risk
+    events emitted by pipeline tasks turn into fraud alerts inside the worker too."""
+    from app.events.consumer import get_realtime_engine
+    from app.services.alerting import install_escalation_hook
+
+    get_realtime_engine()
+    install_escalation_hook()

@@ -6,9 +6,14 @@ Secrets are never hardcoded; in production these come from a secrets manager.
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Annotated
 
 from pydantic import Field, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+# CSV-from-env list type: NoDecode skips pydantic-settings' JSON parsing so our
+# comma-splitting validator runs instead (lets CORS_ORIGINS=a,b work in .env).
+CsvList = Annotated[list[str], NoDecode]
 
 # Sentinel default — if this ever reaches production we must fail fast.
 _DEFAULT_JWT_SECRET = "change-me-in-production"
@@ -46,7 +51,7 @@ class Settings(BaseSettings):
     rate_limit_login: str = "5/minute"
 
     # Trusted reverse-proxy CIDRs/IPs — only these may set X-Forwarded-For.
-    trusted_proxies: list[str] = Field(default_factory=list)
+    trusted_proxies: CsvList = Field(default_factory=list)
 
     # Max request body (bytes) rejected at the edge before routing.
     max_request_body_bytes: int = 26_214_400  # 25 MB
@@ -54,7 +59,7 @@ class Settings(BaseSettings):
     # ── Field-level PII encryption ──
     # Primary key + optional comma-separated older keys for MultiFernet rotation.
     fernet_key: str = ""
-    fernet_old_keys: list[str] = Field(default_factory=list)
+    fernet_old_keys: CsvList = Field(default_factory=list)
 
     # ── DPDP / data retention ──
     pii_retention_days: int = 2555  # ~7 years; tune per RBI/DPDP policy
@@ -87,7 +92,7 @@ class Settings(BaseSettings):
     celery_result_backend: str = "redis://localhost:6379/2"
 
     # ── CORS ──
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
+    cors_origins: CsvList = Field(default_factory=lambda: ["http://localhost:5173"])
 
     @field_validator(
         "cors_origins", "trusted_proxies", "fernet_old_keys", mode="before"

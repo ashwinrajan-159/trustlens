@@ -44,3 +44,4 @@ Thumbs.db
 # Logs
 *.log
 logs/
+docker-compose.override.yml

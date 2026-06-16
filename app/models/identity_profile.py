@@ -20,12 +20,14 @@ class IdentityProfile(UUIDMixin, TimestampMixin, SoftDeleteMixin, Base):
         String(36), ForeignKey("applications.id"), index=True, nullable=False
     )
 
+    # EncryptedString columns hold Fernet ciphertext (~120+ chars even for short PII),
+    # so they are sized generously — not to the plaintext length.
     resolved_name: Mapped[str | None] = mapped_column(EncryptedString(512), nullable=True)
     resolved_name_masked: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    pan: Mapped[str | None] = mapped_column(EncryptedString(64), nullable=True)
+    pan: Mapped[str | None] = mapped_column(EncryptedString(512), nullable=True)
     pan_masked: Mapped[str | None] = mapped_column(String(32), nullable=True)
     aadhaar_masked: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    dob: Mapped[str | None] = mapped_column(EncryptedString(32), nullable=True)
+    dob: Mapped[str | None] = mapped_column(EncryptedString(255), nullable=True)
 
     distinct_name_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     distinct_pan_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
