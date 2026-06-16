@@ -200,6 +200,24 @@ class EventStatus(str, enum.Enum):
     FAILED = "FAILED"
 
 
+class MLModelStatus(str, enum.Enum):
+    """Model-governance lifecycle. Promotion to DEPLOYED requires senior approval."""
+
+    TRAINING = "TRAINING"
+    TRAINED = "TRAINED"
+    EVALUATING = "EVALUATING"
+    APPROVED = "APPROVED"
+    DEPLOYED = "DEPLOYED"
+    REJECTED = "REJECTED"
+    ARCHIVED = "ARCHIVED"
+
+
+class MLLabelSource(str, enum.Enum):
+    ANALYST_DECISION = "ANALYST_DECISION"
+    ANALYST_FEEDBACK = "ANALYST_FEEDBACK"
+    CONFIRMED_FRAUD = "CONFIRMED_FRAUD"
+
+
 class SignalSeverity(str, enum.Enum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"

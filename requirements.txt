@@ -29,6 +29,16 @@ aioboto3==13.3.0
 networkx==3.5
 # neo4j==6.2.0  # enable when persisting the graph to a Neo4j cluster
 
+# ML platform (Phase 9) — all local; ML is a second opinion, never the system of record
+scikit-learn==1.6.1
+scipy==1.16.2
+joblib==1.5.2
+numpy==2.3.3
+# Optional local accelerators / tooling (lazy-imported; not required to run):
+# xgboost, lightgbm  — stronger local models
+# mlflow             — local file-backed experiment tracking/registry
+# shap               — model explainability (falls back to feature_importances_)
+
 # Logging / observability
 structlog==24.4.0
 prometheus-fastapi-instrumentator==7.0.0

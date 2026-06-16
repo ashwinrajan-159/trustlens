@@ -152,6 +152,19 @@ class ApplicationService:
             new_id(), app.id, decision=target.value, decided_by=decided_by))
         await self.session.commit()
         await _relay(self.session)
+
+        # Harvest a training label from the analyst's decision (reject=fraud, approve=legit).
+        try:
+            from app.models.enums import MLLabelSource
+            from app.services.ml import MLService
+
+            await MLService(self.session).record_label(
+                app.id, 1 if not approve else 0,
+                source=MLLabelSource.ANALYST_DECISION, created_by=decided_by,
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.warning("ml.label_failed", application_id=app.id, error=str(exc))
+
         log.info("application.decide", application_id=app.id, decision=target.value)
         return app
 

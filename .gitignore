@@ -27,6 +27,8 @@ env/
 minio-data/
 postgres-data/
 redis-data/
+ml_artifacts/
+mlruns/
 
 # IDE / OS
 .vscode/

@@ -210,6 +210,14 @@ async def compute_risk_assessment_async(application_id: str, *, session_factory=
             await publish_pending(session)
         except Exception as exc:  # noqa: BLE001
             log.warning("events.relay_failed", error=str(exc))
+        # Capture an ML feature snapshot for this analysis run (training data; best-effort).
+        try:
+            from app.services.ml import MLService
+
+            await MLService(session).snapshot_features(application_id)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("ml.snapshot_failed", application_id=application_id, error=str(exc))
+
         log.info(
             "risk.assessed",
             application_id=application_id,

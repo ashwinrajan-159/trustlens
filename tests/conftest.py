@@ -72,11 +72,13 @@ async def _setup_db():
     from app.core.token_store import reset_token_store
     from app.events.consumer import get_realtime_engine, reset_realtime_engine
     from app.events.publisher import reset_publisher
+    from app.services.ml import reset_model_cache
     from app.services.ocr import set_engine_override
 
     reset_token_store()
     reset_rate_limiter()
     set_engine_override(None)
+    reset_model_cache()
     # Fresh in-process event bus per test, with the real-time engine subscribed.
     reset_realtime_engine()
     reset_publisher()

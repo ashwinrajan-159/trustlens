@@ -10,6 +10,7 @@ from app.models.extracted_entity import ExtractedEntity
 from app.models.fraud_signal import FraudSignal
 from app.models.graph_analysis import GraphAnalysis
 from app.models.identity_profile import IdentityProfile
+from app.models.ml import MLFeatureSnapshot, MLLabel, MLModel, MLPrediction
 from app.models.ocr_result import OcrResult
 from app.models.property_profile import PropertyProfile
 from app.models.risk_assessment import RiskAssessment
@@ -30,4 +31,8 @@ __all__ = [
     "BusinessProfile",
     "GraphAnalysis",
     "EventLog",
+    "MLFeatureSnapshot",
+    "MLLabel",
+    "MLModel",
+    "MLPrediction",
 ]

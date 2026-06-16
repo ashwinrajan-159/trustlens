@@ -59,6 +59,13 @@ class Settings(BaseSettings):
     # ── DPDP / data retention ──
     pii_retention_days: int = 2555  # ~7 years; tune per RBI/DPDP policy
 
+    # ── ML platform (Phase 9) — all local ──
+    ml_artifacts_dir: str = "ml_artifacts"
+    ml_min_samples: int = 20          # refuse to train below this
+    ml_min_fraud_rate: float = 0.10   # refuse if fraud prevalence too low
+    ml_approval_min_pr_auc: float = 0.70   # governance gate to APPROVE
+    ml_approval_max_fpr: float = 0.30      # governance gate to APPROVE
+
     # ── Object storage ──
     storage_endpoint_url: str = "http://localhost:9000"
     storage_access_key: str = "minioadmin"

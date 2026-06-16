@@ -80,3 +80,8 @@ def property_flagged(event_id, application_id, *, reason, correlation_id=None):
 def fraud_ring_detected(event_id, application_id, *, ring_size, application_ids, correlation_id=None):
     return _env(event_id, EventType.FRAUD_RING_DETECTED, "application", application_id,
                 correlation_id, {"ring_size": ring_size, "application_ids": application_ids})
+
+
+def model_prediction_generated(event_id, application_id, *, probability, tier, model_id, correlation_id=None):
+    return _env(event_id, EventType.MODEL_PREDICTION_GENERATED, "application", application_id,
+                correlation_id, {"probability": probability, "tier": tier, "model_id": model_id})
