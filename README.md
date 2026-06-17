@@ -26,7 +26,26 @@ Built in phases per `TRUSTLENS_BUILD_SPEC.md`.
 | 8 | Events: versioned PII-free schemas, transactional outbox (`event_log`) dual-write, relay + reconciliation/replay, real-time engine | ✅ done |
 | 9 | ML platform (local): feature store, sklearn/XGBoost training w/ gates + governance, champion inference + SHAP, KS drift | ✅ done |
 | 10 | Alerting (SLA + real-time escalation), investigation cases, RBI FMR reporting, operations dashboards | ✅ done |
-| 11+ | Frontend, external-verification, anti-spoofing, DPDP erasure, infra | ⏳ |
+| 11 | Frontend (React 19 + Vite + Tailwind + Router 7): all pages, role-gated nav, every service wired | ✅ done |
+| 12+ | External-verification, anti-spoofing, DPDP erasure, infra/CI/k8s | ⏳ |
+
+## Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev        # http://localhost:5173 (proxies /api → http://localhost:8000)
+npm run build      # production bundle in dist/
+```
+
+React 19 · Vite · TailwindCSS · React Router 7 · lucide-react (no chart lib — lightweight
+inline SVG/CSS). Single API client (`src/api/client.js`) with token storage + transparent
+401-refresh-retry; `AuthContext` decodes the JWT role for client-side nav gating (backend
+still enforces). Pages: Landing, Login, Register, Dashboard (role-aware), Apply (multi-step
+upload), Applications, App Detail (risk/signals/identity/property/financial/documents tabs),
+Analyst Review (signals + ML second opinion + decision), Review Queue, Alerts (+ RBI FMR),
+Cases, Operations (overview + event log + replay), ML Platform, Network Graph, Account
+(MFA + DPDP consent).
 | … | see spec | ⏳ |
 
 ## Stack (Phase 1)
