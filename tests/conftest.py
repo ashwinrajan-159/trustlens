@@ -72,6 +72,7 @@ async def _setup_db():
     from app.core.token_store import reset_token_store
     from app.events.consumer import get_realtime_engine, reset_realtime_engine
     from app.events.publisher import reset_publisher
+    from app.services.alerting import install_escalation_hook, set_hook_session_factory
     from app.services.ml import reset_model_cache
     from app.services.ocr import set_engine_override
 
@@ -79,10 +80,13 @@ async def _setup_db():
     reset_rate_limiter()
     set_engine_override(None)
     reset_model_cache()
-    # Fresh in-process event bus per test, with the real-time engine subscribed.
+    # Fresh in-process event bus per test, with the real-time engine subscribed +
+    # the alert escalation hook pointed at the test session factory.
     reset_realtime_engine()
     reset_publisher()
     get_realtime_engine()
+    set_hook_session_factory(_SessionFactory)
+    install_escalation_hook()
     async with _engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield

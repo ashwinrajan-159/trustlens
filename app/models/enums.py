@@ -218,6 +218,51 @@ class MLLabelSource(str, enum.Enum):
     CONFIRMED_FRAUD = "CONFIRMED_FRAUD"
 
 
+# ── Phase 10: alerting + case management + RBI compliance ──
+
+class AlertType(str, enum.Enum):
+    HIGH_RISK_APPLICATION = "HIGH_RISK_APPLICATION"
+    FRAUD_RING = "FRAUD_RING"
+    IDENTITY_FRAUD = "IDENTITY_FRAUD"
+    DUPLICATE_COLLATERAL = "DUPLICATE_COLLATERAL"
+
+
+class AlertStatus(str, enum.Enum):
+    OPEN = "OPEN"
+    ACKNOWLEDGED = "ACKNOWLEDGED"
+    ESCALATED = "ESCALATED"
+    RESOLVED = "RESOLVED"
+    DISMISSED = "DISMISSED"
+
+
+class CaseType(str, enum.Enum):
+    INVESTIGATION = "INVESTIGATION"
+    FRAUD_RING = "FRAUD_RING"
+    RBI_REPORTABLE = "RBI_REPORTABLE"
+
+
+class CaseStatus(str, enum.Enum):
+    OPEN = "OPEN"
+    IN_PROGRESS = "IN_PROGRESS"
+    CLOSED = "CLOSED"
+
+
+class CasePriority(str, enum.Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    URGENT = "URGENT"
+
+
+class RBIReportType(str, enum.Enum):
+    """RBI Fraud Management reporting tiers by exposure amount."""
+
+    FLASH = "FLASH"          # >= 25 Cr — flash report within 24h
+    FMR_1 = "FMR_1"          # >= 1 Cr  — FMR-1 within 7 days
+    QUARTERLY = "QUARTERLY"  # >= 1 L   — quarterly return
+    NONE = "NONE"
+
+
 class SignalSeverity(str, enum.Enum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"
@@ -316,4 +361,14 @@ SIGNAL_CATEGORY_MAP: dict[FraudSignalType, RiskCategory] = {
     FraudSignalType.DUPLICATE_COLLATERAL_NETWORK: RiskCategory.BEHAVIOR,
     FraudSignalType.HIGH_CENTRALITY_HUB: RiskCategory.BEHAVIOR,
     FraudSignalType.FRAUD_RING_DETECTED: RiskCategory.BEHAVIOR,
+}
+
+
+# Alert SLA (hours) by severity — the analyst-action clock (defined here, after
+# SignalSeverity, to keep module evaluation order valid).
+ALERT_SLA_HOURS: dict[SignalSeverity, int] = {
+    SignalSeverity.CRITICAL: 24,
+    SignalSeverity.HIGH: 72,
+    SignalSeverity.MEDIUM: 168,
+    SignalSeverity.LOW: 336,
 }

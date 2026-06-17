@@ -25,7 +25,8 @@ Built in phases per `TRUSTLENS_BUILD_SPEC.md`.
 | 7 | Graph intel (NetworkX): shared-PAN / mule-account / duplicate-collateral networks, fraud rings, high-centrality hubs; per-app network endpoint | ✅ done |
 | 8 | Events: versioned PII-free schemas, transactional outbox (`event_log`) dual-write, relay + reconciliation/replay, real-time engine | ✅ done |
 | 9 | ML platform (local): feature store, sklearn/XGBoost training w/ gates + governance, champion inference + SHAP, KS drift | ✅ done |
-| 10+ | Case management + alerting + RBI compliance, frontend | ⏳ |
+| 10 | Alerting (SLA + real-time escalation), investigation cases, RBI FMR reporting, operations dashboards | ✅ done |
+| 11+ | Frontend, external-verification, anti-spoofing, DPDP erasure, infra | ⏳ |
 | … | see spec | ⏳ |
 
 ## Stack (Phase 1)

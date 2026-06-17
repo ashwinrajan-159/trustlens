@@ -27,8 +27,10 @@ async def lifespan(_app: FastAPI):
     # Subscribe the real-time risk engine to the in-process event bus (memory backend),
     # so API-triggered events are reacted to sub-second.
     from app.events.consumer import get_realtime_engine
+    from app.services.alerting import install_escalation_hook
 
     get_realtime_engine()
+    install_escalation_hook()  # CRITICAL/HIGH events → fraud alerts (Phase 10)
     yield
     log.info("app.shutdown")
 

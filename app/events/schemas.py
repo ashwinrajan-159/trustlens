@@ -85,3 +85,17 @@ def fraud_ring_detected(event_id, application_id, *, ring_size, application_ids,
 def model_prediction_generated(event_id, application_id, *, probability, tier, model_id, correlation_id=None):
     return _env(event_id, EventType.MODEL_PREDICTION_GENERATED, "application", application_id,
                 correlation_id, {"probability": probability, "tier": tier, "model_id": model_id})
+
+
+def fraud_alert_generated(event_id, alert_id, *, application_id, alert_type, severity, correlation_id=None):
+    return _env(event_id, EventType.FRAUD_ALERT_GENERATED, "alert", alert_id,
+                correlation_id, {"application_id": application_id, "alert_type": alert_type, "severity": severity})
+
+
+def case_created(event_id, case_id, *, case_type, priority, correlation_id=None):
+    return _env(event_id, EventType.CASE_CREATED, "case", case_id,
+                correlation_id, {"case_type": case_type, "priority": priority})
+
+
+def case_closed(event_id, case_id, *, outcome, correlation_id=None):
+    return _env(event_id, EventType.CASE_CLOSED, "case", case_id, correlation_id, {"outcome": outcome})
