@@ -99,3 +99,8 @@ def case_created(event_id, case_id, *, case_type, priority, correlation_id=None)
 
 def case_closed(event_id, case_id, *, outcome, correlation_id=None):
     return _env(event_id, EventType.CASE_CLOSED, "case", case_id, correlation_id, {"outcome": outcome})
+
+
+def review_decision_recorded(event_id, alert_id, *, application_id, decision, report_id, correlation_id=None):
+    return _env(event_id, EventType.REVIEW_DECISION_RECORDED, "alert", alert_id, correlation_id,
+                {"application_id": application_id, "decision": decision, "report_id": report_id})

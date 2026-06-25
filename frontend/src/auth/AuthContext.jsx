@@ -59,6 +59,7 @@ export function AuthProvider({ children }) {
     isAuthenticated: !!user,
     isAnalyst: ANALYST_ROLES.has(role),
     isSenior: SENIOR_ROLES.has(role),
+    isAdmin: role === "ADMIN",
     login, register, logout, refreshUser: bootstrap,
   };
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;

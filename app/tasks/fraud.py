@@ -131,6 +131,17 @@ async def run_fraud_engine_async(document_id: str, *, session_factory=None) -> d
         log.info("fraud.signals_generated", document_id=document_id, count=len(results))
         application_id = document.application_id
 
+    # Document forensics (Phase 13) — image/PDF tamper & cross-application reuse.
+    # Persists its own FraudSignals (DOCUMENT scope) BEFORE the risk recompute that
+    # the identity chain triggers, so forensic findings fold into the score.
+    # Best-effort: never let forensics break the core pipeline.
+    try:
+        from app.tasks.forensics import run_document_forensics_async
+
+        await run_document_forensics_async(document_id, session_factory=sf)
+    except Exception as exc:  # noqa: BLE001
+        log.error("fraud.forensics_chain_failed", document_id=document_id, error=str(exc))
+
     # Chain identity resolution (Phase 4), which in turn recomputes risk (best-effort).
     try:
         from app.tasks.identity import run_identity_resolution_async
@@ -170,7 +181,12 @@ async def compute_risk_assessment_async(application_id: str, *, session_factory=
             )
             for s in signals
         ]
-        outcome = score(results)
+        # Apply the active governed weight overlay (if any) so scoring reflects the
+        # currently-approved per-signal weights; stamp its version for reproducibility.
+        from app.services.weight_governance import WeightGovernanceService
+
+        overlay, weight_version = await WeightGovernanceService(session).active_overlay()
+        outcome = score(results, weight_overlay=overlay, weight_config_version=weight_version)
 
         # Idempotent: retire prior assessments, write the fresh one.
         prior = (
@@ -192,6 +208,7 @@ async def compute_risk_assessment_async(application_id: str, *, session_factory=
                 reasons=outcome.reasons,
                 by_category=outcome.by_category,
                 engine_version=ENGINE_VERSION,
+                weight_config_version=outcome.weight_config_version,
             )
         )
         application.current_risk_score = outcome.total_score

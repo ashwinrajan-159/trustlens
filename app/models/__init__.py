@@ -5,10 +5,20 @@ from app.models.audit_log import AuditLog
 from app.models.base import Base
 from app.models.business_profile import BusinessProfile
 from app.models.document import Document
+from app.models.document_fingerprint import DocumentFingerprint
 from app.models.event_log import EventLog
 from app.models.extracted_entity import ExtractedEntity
 from app.models.fraud_alert import FraudAlert
 from app.models.fraud_signal import FraudSignal
+from app.models.fraudops import (
+    FalsePositiveRecord,
+    FraudPattern,
+    InvestigationReport,
+    PatternCaseLink,
+    ReviewDecisionRecord,
+    SignalPerformance,
+    SignalWeightConfig,
+)
 from app.models.graph_analysis import GraphAnalysis
 from app.models.identity_profile import IdentityProfile
 from app.models.investigation_case import InvestigationCase
@@ -23,6 +33,7 @@ __all__ = [
     "User",
     "Application",
     "Document",
+    "DocumentFingerprint",
     "AuditLog",
     "OcrResult",
     "ExtractedEntity",
@@ -39,4 +50,11 @@ __all__ = [
     "MLPrediction",
     "FraudAlert",
     "InvestigationCase",
+    "InvestigationReport",
+    "ReviewDecisionRecord",
+    "FalsePositiveRecord",
+    "FraudPattern",
+    "PatternCaseLink",
+    "SignalPerformance",
+    "SignalWeightConfig",
 ]

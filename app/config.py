@@ -71,6 +71,9 @@ class Settings(BaseSettings):
     ml_approval_min_pr_auc: float = 0.70   # governance gate to APPROVE
     ml_approval_max_fpr: float = 0.30      # governance gate to APPROVE
 
+    # ── Fraud-ops closed loop (Phase 12) ──
+    signal_min_sample: int = 10   # min reviews before a signal's precision is "actionable"
+
     # ── Object storage ──
     storage_endpoint_url: str = "http://localhost:9000"
     storage_access_key: str = "minioadmin"

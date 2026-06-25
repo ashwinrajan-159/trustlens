@@ -10,6 +10,9 @@ import AppDetail from "./pages/AppDetail";
 import ReviewQueue from "./pages/ReviewQueue";
 import AnalystReview from "./pages/AnalystReview";
 import Alerts from "./pages/Alerts";
+import Investigation from "./pages/Investigation";
+import SeniorReview from "./pages/SeniorReview";
+import Knowledge from "./pages/Knowledge";
 import Cases from "./pages/Cases";
 import Operations from "./pages/Operations";
 import MLPlatform from "./pages/MLPlatform";
@@ -38,6 +41,9 @@ export default function App() {
             <Route path="review-queue" element={<ReviewQueue />} />
             <Route path="review/:id" element={<AnalystReview />} />
             <Route path="alerts" element={<Alerts />} />
+            <Route path="alerts/:alertId/investigate" element={<Investigation />} />
+            <Route path="senior-review" element={<SeniorReview />} />
+            <Route path="knowledge" element={<Knowledge />} />
             <Route path="cases" element={<Cases />} />
             <Route path="operations" element={<Operations />} />
             <Route path="ml" element={<MLPlatform />} />

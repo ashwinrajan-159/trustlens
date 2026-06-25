@@ -9,6 +9,7 @@ from app.api.v1 import (
     auth,
     cases,
     documents,
+    fraudops,
     health,
     ml,
     operations,
@@ -23,3 +24,4 @@ api_router.include_router(operations.router)
 api_router.include_router(ml.router)
 api_router.include_router(alerts.router)
 api_router.include_router(cases.router)
+api_router.include_router(fraudops.router)

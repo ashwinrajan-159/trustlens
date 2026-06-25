@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useNavigate, Navigate } from "react-router-dom";
 import {
   ShieldCheck, LayoutDashboard, FilePlus2, Files, ListChecks,
-  Bell, Activity, FolderKanban, Brain, LogOut, UserCircle2,
+  Bell, Activity, FolderKanban, Brain, LogOut, UserCircle2, Gavel, BookOpen,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { Spinner } from "./ui";
@@ -17,6 +17,8 @@ const ANALYST_NAV = [
   { to: "/app/applications", label: "Applications", icon: Files },
   { to: "/app/review-queue", label: "Review Queue", icon: ListChecks },
   { to: "/app/alerts", label: "Alerts", icon: Bell },
+  { to: "/app/senior-review", label: "Senior Review", icon: Gavel },
+  { to: "/app/knowledge", label: "Knowledge", icon: BookOpen },
   { to: "/app/cases", label: "Cases", icon: FolderKanban },
   { to: "/app/operations", label: "Operations", icon: Activity },
   { to: "/app/ml", label: "ML Platform", icon: Brain },

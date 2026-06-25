@@ -18,6 +18,8 @@ from app.core.exceptions import AuthenticationError, AuthorizationError
 from app.core.security import ACCESS, decode_token
 from app.database import get_db
 from app.models.enums import ANALYST_ROLES, SENIOR_ROLES, UserRole
+
+ADMIN_ROLES = {UserRole.ADMIN}
 from app.repositories.user import UserRepository
 from app.services.storage import StorageService
 
@@ -93,6 +95,7 @@ def require_roles(*roles: UserRole):
 # Convenience guards.
 require_analyst = require_roles(*ANALYST_ROLES)
 require_senior = require_roles(*SENIOR_ROLES)
+require_admin = require_roles(*ADMIN_ROLES)
 
 
 # Storage service is stateless/session-less — a single shared instance is fine.

@@ -127,6 +127,70 @@ class AlertingService:
         await self.session.commit()
         return alert
 
+    async def claim(self, alert_id: str, *, by: str) -> FraudAlert:
+        """Atomically claim an alert for investigation (Phase 12). Concurrency-safe:
+        a conditional UPDATE on ``claimed_by IS NULL`` ensures only one analyst wins."""
+        from datetime import datetime, timezone
+
+        from sqlalchemy import update
+
+        from app.models.enums import ApplicationStatus, AuditAction
+        from app.services.audit import AuditService
+
+        result = await self.session.execute(
+            update(FraudAlert)
+            .where(FraudAlert.id == alert_id, FraudAlert.claimed_by.is_(None))
+            .values(claimed_by=by, claimed_at=datetime.now(timezone.utc), status=AlertStatus.INVESTIGATING)
+        )
+        if result.rowcount == 0:
+            alert = await self._get(alert_id)  # 404 if missing
+            from app.core.exceptions import ConflictError
+
+            raise ConflictError(f"Alert already claimed by {alert.claimed_by}")
+        alert = await self._get(alert_id)
+
+        # Move the application into investigation (best-effort, guarded transition).
+        await self._advance_application(alert.application_id, ApplicationStatus.UNDER_INVESTIGATION)
+        await AuditService(self.session).record(
+            action=AuditAction.CLAIM, entity_type="alert", entity_id=alert_id,
+            actor_id=by, after={"status": alert.status.value, "claimed_by": by},
+        )
+        await self.session.commit()
+        return alert
+
+    async def transition(self, alert_id: str, target: AlertStatus, *, by: str, reason: str | None = None) -> FraudAlert:
+        """Guarded alert state transition. Illegal transitions raise; reopening a
+        RESOLVED/DISMISSED alert requires an explicit reason."""
+        from app.core.exceptions import StateTransitionError
+        from app.models.enums import ALERT_TRANSITIONS, AuditAction
+        from app.services.audit import AuditService
+
+        alert = await self._get(alert_id)
+        allowed = ALERT_TRANSITIONS.get(alert.status, set())
+        if target not in allowed:
+            if alert.status in {AlertStatus.RESOLVED, AlertStatus.DISMISSED} and reason:
+                pass  # explicit guarded reopen
+            else:
+                raise StateTransitionError(f"Cannot move alert {alert.status.value} → {target.value}")
+        before = alert.status.value
+        alert.status = target
+        await AuditService(self.session).record(
+            action=AuditAction.STATE_TRANSITION, entity_type="alert", entity_id=alert_id,
+            actor_id=by, before={"status": before}, after={"status": target.value, "reason": reason},
+        )
+        await self.session.commit()
+        return alert
+
+    async def _advance_application(self, application_id: str, target) -> None:
+        from app.models.application import Application
+        from app.models.enums import APPLICATION_TRANSITIONS
+
+        app = (
+            await self.session.execute(select(Application).where(Application.id == application_id))
+        ).scalar_one_or_none()
+        if app and target in APPLICATION_TRANSITIONS.get(app.status, set()):
+            app.status = target
+
     async def resolve(self, alert_id: str, *, by: str, dismiss: bool = False) -> FraudAlert:
         alert = await self._get(alert_id)
         alert.status = AlertStatus.DISMISSED if dismiss else AlertStatus.RESOLVED

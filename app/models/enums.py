@@ -32,15 +32,36 @@ class ApplicationStatus(str, enum.Enum):
     DRAFT = "DRAFT"
     SUBMITTED = "SUBMITTED"
     UNDER_REVIEW = "UNDER_REVIEW"
+    # Closed-loop investigation states (Phase 12).
+    UNDER_INVESTIGATION = "UNDER_INVESTIGATION"
+    REVIEW_PENDING = "REVIEW_PENDING"
+    CONFIRMED_FRAUD = "CONFIRMED_FRAUD"
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
 
 
-# Enforced state machine: status -> allowed next states.
+# Enforced state machine: status -> allowed next states. The investigation states
+# are added alongside the original decision path (existing transitions unchanged).
 APPLICATION_TRANSITIONS: dict[ApplicationStatus, set[ApplicationStatus]] = {
     ApplicationStatus.DRAFT: {ApplicationStatus.SUBMITTED},
-    ApplicationStatus.SUBMITTED: {ApplicationStatus.UNDER_REVIEW, ApplicationStatus.REJECTED},
+    ApplicationStatus.SUBMITTED: {
+        ApplicationStatus.UNDER_REVIEW,
+        ApplicationStatus.UNDER_INVESTIGATION,
+        ApplicationStatus.REJECTED,
+    },
     ApplicationStatus.UNDER_REVIEW: {ApplicationStatus.APPROVED, ApplicationStatus.REJECTED},
+    ApplicationStatus.UNDER_INVESTIGATION: {
+        ApplicationStatus.REVIEW_PENDING,
+        ApplicationStatus.REJECTED,
+    },
+    ApplicationStatus.REVIEW_PENDING: {
+        ApplicationStatus.UNDER_INVESTIGATION,  # insufficient evidence → re-investigate
+        ApplicationStatus.UNDER_REVIEW,          # false positive → proceeds to normal review
+        ApplicationStatus.CONFIRMED_FRAUD,
+        ApplicationStatus.APPROVED,
+        ApplicationStatus.REJECTED,
+    },
+    ApplicationStatus.CONFIRMED_FRAUD: set(),
     ApplicationStatus.APPROVED: set(),
     ApplicationStatus.REJECTED: set(),
 }
@@ -100,6 +121,13 @@ class AuditAction(str, enum.Enum):
     LOGOUT = "LOGOUT"
     STATE_TRANSITION = "STATE_TRANSITION"
     DOWNLOAD = "DOWNLOAD"
+    # Closed-loop actions (Phase 12).
+    CLAIM = "CLAIM"
+    SUBMIT_REPORT = "SUBMIT_REPORT"
+    REVIEW_DECISION = "REVIEW_DECISION"
+    PATTERN_UPDATE = "PATTERN_UPDATE"
+    WEIGHT_PROPOSE = "WEIGHT_PROPOSE"
+    WEIGHT_APPROVE = "WEIGHT_APPROVE"
 
 
 class EntityType(str, enum.Enum):
@@ -170,6 +198,7 @@ class EventType(str, enum.Enum):
     PROPERTY_FLAGGED = "PROPERTY_FLAGGED"
     FRAUD_RING_DETECTED = "FRAUD_RING_DETECTED"
     MODEL_PREDICTION_GENERATED = "MODEL_PREDICTION_GENERATED"
+    REVIEW_DECISION_RECORDED = "REVIEW_DECISION_RECORDED"
 
 
 # EventType → Kafka topic (trustlens.<entity>.<action>).
@@ -187,6 +216,7 @@ TOPIC_MAP: dict[EventType, str] = {
     EventType.PROPERTY_FLAGGED: "trustlens.property.flagged",
     EventType.FRAUD_RING_DETECTED: "trustlens.fraud_ring.detected",
     EventType.MODEL_PREDICTION_GENERATED: "trustlens.model.prediction_generated",
+    EventType.REVIEW_DECISION_RECORDED: "trustlens.review.decision_recorded",
 }
 
 
@@ -230,6 +260,8 @@ class AlertType(str, enum.Enum):
 class AlertStatus(str, enum.Enum):
     OPEN = "OPEN"
     ACKNOWLEDGED = "ACKNOWLEDGED"
+    INVESTIGATING = "INVESTIGATING"      # claimed by an analyst (Phase 12)
+    REVIEW_PENDING = "REVIEW_PENDING"    # report submitted, awaiting senior review
     ESCALATED = "ESCALATED"
     RESOLVED = "RESOLVED"
     DISMISSED = "DISMISSED"
@@ -326,6 +358,26 @@ class FraudSignalType(str, enum.Enum):
     DUPLICATE_COLLATERAL_NETWORK = "DUPLICATE_COLLATERAL_NETWORK"
     HIGH_CENTRALITY_HUB = "HIGH_CENTRALITY_HUB"
     FRAUD_RING_DETECTED = "FRAUD_RING_DETECTED"
+    # Document forensics (app/forensics) — image/PDF tamper & reuse intelligence.
+    # Codes mirror ForensicSignal.code; unknown codes fall back to the generic one.
+    FORENSIC_DOCUMENT_ANOMALY = "FORENSIC_DOCUMENT_ANOMALY"
+    FORENSIC_DOCUMENT_REUSED_ACROSS_APPS = "FORENSIC_DOCUMENT_REUSED_ACROSS_APPS"
+    FORENSIC_DOCUMENT_TEMPLATE_REUSE = "FORENSIC_DOCUMENT_TEMPLATE_REUSE"
+    FORENSIC_METADATA_EDIT_SOFTWARE = "FORENSIC_METADATA_EDIT_SOFTWARE"
+    FORENSIC_METADATA_PDF_REEDITED = "FORENSIC_METADATA_PDF_REEDITED"
+    FORENSIC_METADATA_IMPOSSIBLE_TIMELINE = "FORENSIC_METADATA_IMPOSSIBLE_TIMELINE"
+    FORENSIC_METADATA_NO_CAPTURE_ORIGIN = "FORENSIC_METADATA_NO_CAPTURE_ORIGIN"
+    FORENSIC_FONT_OUTLIER = "FORENSIC_FONT_OUTLIER"
+    FORENSIC_FONT_SIZE_OUTLIER = "FORENSIC_FONT_SIZE_OUTLIER"
+    FORENSIC_COPY_MOVE = "FORENSIC_COPY_MOVE"
+    FORENSIC_LIKELY_SCREENSHOT = "FORENSIC_LIKELY_SCREENSHOT"
+    FORENSIC_POSSIBLE_SCREENSHOT = "FORENSIC_POSSIBLE_SCREENSHOT"
+    FORENSIC_SIGNATURE_COPY_PASTE = "FORENSIC_SIGNATURE_COPY_PASTE"
+    FORENSIC_SIGNATURE_INCONSISTENT = "FORENSIC_SIGNATURE_INCONSISTENT"
+    FORENSIC_SEAL_DIGITALLY_INSERTED = "FORENSIC_SEAL_DIGITALLY_INSERTED"
+    FORENSIC_SEAL_AUTH_UNAVAILABLE = "FORENSIC_SEAL_AUTH_UNAVAILABLE"
+    FORENSIC_ELA_ANOMALY = "FORENSIC_ELA_ANOMALY"
+    FORENSIC_NOISE_INCONSISTENCY = "FORENSIC_NOISE_INCONSISTENCY"
 
 
 # FraudSignalType → RiskCategory (drives weighted scoring by category).
@@ -372,3 +424,56 @@ ALERT_SLA_HOURS: dict[SignalSeverity, int] = {
     SignalSeverity.MEDIUM: 168,
     SignalSeverity.LOW: 336,
 }
+
+
+# ── Phase 12: Fraud-ops closed loop (investigation → review → knowledge → governed tuning) ──
+
+# Alert workflow state machine (extends AlertStatus). Guarded transitions only;
+# reopening a closed/resolved alert requires an explicit reason (enforced in service).
+ALERT_TRANSITIONS: dict[AlertStatus, set[AlertStatus]] = {
+    AlertStatus.OPEN: {AlertStatus.ACKNOWLEDGED, AlertStatus.INVESTIGATING, AlertStatus.DISMISSED},
+    AlertStatus.ACKNOWLEDGED: {AlertStatus.INVESTIGATING, AlertStatus.DISMISSED},
+    AlertStatus.INVESTIGATING: {AlertStatus.REVIEW_PENDING, AlertStatus.ESCALATED, AlertStatus.DISMISSED},
+    AlertStatus.REVIEW_PENDING: {AlertStatus.INVESTIGATING, AlertStatus.RESOLVED, AlertStatus.ESCALATED},
+    AlertStatus.ESCALATED: {AlertStatus.REVIEW_PENDING, AlertStatus.RESOLVED},
+    AlertStatus.RESOLVED: set(),     # reopen only via explicit guarded path
+    AlertStatus.DISMISSED: set(),
+}
+
+
+class ReportRecommendation(str, enum.Enum):
+    """An investigator's recommendation on an alert (advisory; the reviewer decides)."""
+
+    APPROVE_APPLICATION = "APPROVE_APPLICATION"
+    REQUEST_INFORMATION = "REQUEST_INFORMATION"
+    ESCALATE_FRAUD = "ESCALATE_FRAUD"
+    REJECT_APPLICATION = "REJECT_APPLICATION"
+
+
+class ReviewDecision(str, enum.Enum):
+    """A senior reviewer's recorded decision (the human-final outcome)."""
+
+    CONFIRMED_FRAUD = "CONFIRMED_FRAUD"
+    FALSE_POSITIVE = "FALSE_POSITIVE"
+    INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
+    NEED_MORE_REVIEW = "NEED_MORE_REVIEW"
+
+
+class FPReasonCode(str, enum.Enum):
+    """Controlled vocabulary for *why* an alert was a false positive — fed to analytics."""
+
+    EXPLAINABLE_DOCUMENT_VARIANT = "EXPLAINABLE_DOCUMENT_VARIANT"
+    KNOWN_GOOD_CUSTOMER = "KNOWN_GOOD_CUSTOMER"
+    DATA_ENTRY_ERROR = "DATA_ENTRY_ERROR"
+    LEGITIMATE_REPETITION = "LEGITIMATE_REPETITION"
+    THRESHOLD_TOO_SENSITIVE = "THRESHOLD_TOO_SENSITIVE"
+    OTHER = "OTHER"
+
+
+class WeightConfigStatus(str, enum.Enum):
+    """Lifecycle of a versioned signal-weight set (mirrors ML champion governance)."""
+
+    DRAFT = "DRAFT"
+    PROPOSED = "PROPOSED"
+    ACTIVE = "ACTIVE"      # exactly one ACTIVE row; the risk engine reads it
+    RETIRED = "RETIRED"

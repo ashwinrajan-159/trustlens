@@ -49,5 +49,10 @@ class FraudAlert(UUIDMixin, TimestampMixin, SoftDeleteMixin, Base):
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     resolved_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
+    # Investigation assignment (Phase 12). claimed_by is the investigating analyst.
+    claimed_by: Mapped[str | None] = mapped_column(String(36), index=True, nullable=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    case_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("investigation_cases.id"), nullable=True)
+
     def __repr__(self) -> str:  # pragma: no cover
         return f"<FraudAlert {self.alert_number} {self.severity.value} {self.status.value}>"

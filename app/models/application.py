@@ -36,7 +36,7 @@ class Application(UUIDMixin, TimestampMixin, SoftDeleteMixin, Base):
     loan_amount_requested: Mapped[float] = mapped_column(Numeric(18, 2), nullable=False)
 
     status: Mapped[ApplicationStatus] = mapped_column(
-        SAEnum(ApplicationStatus, native_enum=False, length=16),
+        SAEnum(ApplicationStatus, native_enum=False, length=24),
         default=ApplicationStatus.DRAFT,
         index=True,
         nullable=False,

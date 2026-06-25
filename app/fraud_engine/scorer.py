@@ -70,14 +70,36 @@ class ScoreResult:
     risk_tier: str
     reasons: list[dict] = field(default_factory=list)
     by_category: dict[str, float] = field(default_factory=dict)
+    # ID of the governed weight config used (None = built-in defaults). Persist this on the
+    # risk assessment so a historical score is reproducible with the weights of its time.
+    weight_config_version: int | None = None
 
 
-def score(results: list[RuleResult]) -> ScoreResult:
+def score(
+    results: list[RuleResult],
+    *,
+    weight_overlay: dict[str, float] | None = None,
+    weight_config_version: int | None = None,
+) -> ScoreResult:
+    """Weighted sum of signal severities → 0–100 → tier.
+
+    ``weight_overlay`` is an optional governed ``{signal_type: weight}`` map (from the active
+    ``SignalWeightConfig``). When a signal type appears there, its governed weight *replaces*
+    the severity default; otherwise the severity default applies. The engine stays standalone
+    — the caller supplies the overlay, no app imports here — and every contribution still lands
+    in ``reasons`` (with ``weight_source``) so the score is fully auditable.
+    """
+    overlay = weight_overlay or {}
     total = 0.0
     reasons: list[dict] = []
     by_category: dict[str, float] = {}
     for r in results:
-        weight = SEVERITY_WEIGHTS.get(r.severity, 0.0)
+        if r.signal_type in overlay:
+            weight = float(overlay[r.signal_type])
+            weight_source = "governed"
+        else:
+            weight = SEVERITY_WEIGHTS.get(r.severity, 0.0)
+            weight_source = "severity_default"
         category = SIGNAL_CATEGORY.get(r.signal_type, "DOCUMENT")
         total += weight
         by_category[category] = by_category.get(category, 0.0) + weight
@@ -88,9 +110,16 @@ def score(results: list[RuleResult]) -> ScoreResult:
                 "severity": r.severity,
                 "category": category,
                 "weight": weight,
+                "weight_source": weight_source,
                 "confidence": r.confidence,
                 "description": r.description,
             }
         )
     total = min(100.0, round(total, 2))
-    return ScoreResult(total_score=total, risk_tier=score_to_tier(total), reasons=reasons, by_category=by_category)
+    return ScoreResult(
+        total_score=total,
+        risk_tier=score_to_tier(total),
+        reasons=reasons,
+        by_category=by_category,
+        weight_config_version=weight_config_version,
+    )

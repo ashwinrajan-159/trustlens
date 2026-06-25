@@ -44,6 +44,11 @@ analyst workbench:
   survey number, revenue, …) from messy documents; PII is encrypted at rest and masked in responses.
 - **Deterministic fraud engine** — a standalone, unit-testable rule package (Aadhaar Verhoeff, PAN/
   IFSC/GSTIN validators, income/property/financial rules) producing weighted, explainable signals.
+- **Document forensics** — an image/PDF tamper-and-reuse layer (metadata, font-consistency, copy-move,
+  screenshot, signature/seal, ELA, noise analyzers) with **cross-application perceptual-hash reuse
+  detection** — the same supporting document recycled across applications surfaces as a CRITICAL signal.
+  Each technique is confidence-tiered (SUGGESTIVE/CORROBORATIVE/STRONG) so weak heuristics can never
+  solo-drive a denial; findings fold into the score as ordinary, severity-weighted signals.
 - **Cross-document & identity intelligence** — completeness checklist, salary↔bank reconciliation,
   identity resolution and synthetic-identity detection across an application's documents.
 - **Property & financial intelligence** — inflated valuation, survey-number conflicts, **cross-application
@@ -98,9 +103,10 @@ Triggered on document upload / application submit, each step is **idempotent and
 persists its results before chaining the next:
 
 ```
-run_ocr_pipeline → extract_entities → run_fraud_engine → run_identity_resolution
-→ run_cross_document_validation → run_property_validation → run_financial_validation
-→ run_graph_analysis → compute_risk_assessment → (real-time) generate_fraud_alert
+run_ocr_pipeline → extract_entities → run_fraud_engine → run_document_forensics
+→ run_identity_resolution → run_cross_document_validation → run_property_validation
+→ run_financial_validation → run_graph_analysis → compute_risk_assessment
+→ (real-time) generate_fraud_alert
 ```
 
 Document status flows `QUEUED → PROCESSING → PROCESSED | FAILED`. The deterministic engine remains the
@@ -118,6 +124,7 @@ system of record; ML inference and external verification are advisory and degrad
 | **Events** | Transactional outbox (`event_log`) + in-process bus (dev) / Kafka via aiokafka (prod) |
 | **OCR / NLP** | PyMuPDF (digital PDFs), PaddleOCR (optional, scanned images), regex + optional spaCy NER |
 | **Fraud engine** | Standalone pure-Python rule package + weighted scorer (Verhoeff/PAN/IFSC/GSTIN) |
+| **Document forensics** | OpenCV (headless), Pillow, imagehash (pHash reuse), scikit-image (SSIM); confidence-tiered analyzers |
 | **ML (local)** | scikit-learn, XGBoost (optional), SHAP (optional), scipy (KS drift), joblib; MLflow optional |
 | **Graph** | NetworkX (in-memory analytics); Neo4j optional for persistence |
 | **Security** | JWT (access+refresh, rotation), Argon2 password hashing, Fernet/MultiFernet field encryption, immutable WORM audit, rate limiting, security headers |
@@ -145,9 +152,11 @@ truestlens/
 │   │                          #   identity, cross_document, property_intel, financial,
 │   │                          #   graph_intel, ml*, alerting, cases, rbi, storage, audit)
 │   ├── fraud_engine/          # standalone deterministic engine (rules, validators, scorer)
-│   └── tasks/                 # Celery pipeline tasks (ocr, extraction, fraud, identity,
-│                              #   cross_document, property, financial, graph, events)
-├── alembic/versions/          # database migrations (001 … 012)
+│   ├── forensics/             # image/PDF forensics layer (metadata, font, similarity/reuse,
+│   │                          #   copy-move, screenshot, signatures, seals, ELA, noise)
+│   └── tasks/                 # Celery pipeline tasks (ocr, extraction, fraud, forensics,
+│                              #   identity, cross_document, property, financial, graph, events)
+├── alembic/versions/          # database migrations (001 … 014; 014 = document_fingerprints)
 ├── tests/                     # pytest suite (SQLite in-memory; no external services)
 ├── frontend/                  # React + Vite SPA
 │   └── src/{api,auth,components,lib,pages}/

@@ -40,6 +40,24 @@ export const api = {
   ackAlert: (id) => req(`/alerts/${id}/acknowledge`, { method: "POST" }),
   resolveAlert: (id, dismiss = false) => req(`/alerts/${id}/resolve`, { method: "POST", body: { dismiss } }),
   fmrReport: (id) => req(`/alerts/${id}/fmr-report`),
+  claimAlert: (id) => req(`/alerts/${id}/claim`, { method: "POST" }),
+  transitionAlert: (id, target_status, reason = "") =>
+    req(`/alerts/${id}/transition`, { method: "POST", body: { target_status, reason } }),
+
+  // ── fraud-ops closed loop ──
+  submitInvestigation: (alertId, data) =>
+    req(`/alerts/${alertId}/investigation`, { method: "POST", body: data }),
+  listInvestigations: (alertId) => req(`/alerts/${alertId}/investigations`),
+  reviewQueue: () => req("/reviews/queue"),
+  recordReview: (reportId, data) => req(`/reports/${reportId}/review`, { method: "POST", body: data }),
+  patterns: () => req("/knowledge/patterns"),
+  mergePatterns: (source_id, target_id) =>
+    req("/knowledge/patterns/merge", { method: "POST", body: { source_id, target_id } }),
+  signalAnalytics: () => req("/signal-analytics"),
+  weights: () => req("/weights"),
+  proposeWeights: (weights, rationale) =>
+    req("/weights/propose", { method: "POST", body: { weights, rationale } }),
+  activateWeights: (configId) => req(`/weights/${configId}/activate`, { method: "POST" }),
 
   // ── cases ──
   listCases: (q = "") => req(`/cases${q}`),

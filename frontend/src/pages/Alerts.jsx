@@ -55,6 +55,9 @@ export default function Alerts() {
                   <td className="text-xs text-slate-400">{a.sla_breached ? <span className="text-red-600">breached</span> : dt(a.sla_deadline)}</td>
                   <td className="space-x-2 text-right text-xs">
                     <Link to={`/app/applications/${a.application_id}`} className="text-brand-600">App</Link>
+                    {["OPEN", "ACKNOWLEDGED", "ESCALATED", "INVESTIGATING"].includes(a.status) && (
+                      <Link to={`/app/alerts/${a.id}/investigate`} className="text-indigo-600">Investigate</Link>
+                    )}
                     {["OPEN", "ACKNOWLEDGED", "ESCALATED"].includes(a.status) && (
                       <>
                         <button className="text-brand-600" disabled={busy === a.id} onClick={() => act(() => api.ackAlert(a.id), a.id)}>Ack</button>

@@ -15,6 +15,7 @@ from app.models.enums import AlertStatus, SignalSeverity
 from app.models.fraud_alert import FraudAlert
 from app.schemas.casework import AlertPublic, FMRReportResponse, ResolveAlertRequest
 from app.schemas.common import ERROR_RESPONSES, Page
+from app.schemas.fraudops import ClaimResponse, TransitionRequest
 from app.services import rbi
 from app.services.alerting import AlertingService
 
@@ -65,6 +66,29 @@ async def resolve_alert(
     user: CurrentUser = Depends(require_analyst), db: AsyncSession = Depends(get_db),
 ) -> AlertPublic:
     alert = await AlertingService(db).resolve(alert_id, by=user.id, dismiss=data.dismiss)
+    return AlertPublic.model_validate(alert)
+
+
+@router.post("/{alert_id}/claim", response_model=ClaimResponse)
+async def claim_alert(
+    alert_id: str, user: CurrentUser = Depends(require_analyst), db: AsyncSession = Depends(get_db)
+) -> ClaimResponse:
+    """Claim an alert for investigation (concurrency-safe — only one analyst wins)."""
+    alert = await AlertingService(db).claim(alert_id, by=user.id)
+    return ClaimResponse(
+        id=alert.id, status=alert.status.value, claimed_by=alert.claimed_by, claimed_at=alert.claimed_at
+    )
+
+
+@router.post("/{alert_id}/transition", response_model=AlertPublic)
+async def transition_alert(
+    alert_id: str, data: TransitionRequest,
+    user: CurrentUser = Depends(require_analyst), db: AsyncSession = Depends(get_db),
+) -> AlertPublic:
+    """Guarded alert state transition (illegal moves rejected; reopen requires a reason)."""
+    alert = await AlertingService(db).transition(
+        alert_id, AlertStatus(data.target_status), by=user.id, reason=data.reason or None
+    )
     return AlertPublic.model_validate(alert)
 
 

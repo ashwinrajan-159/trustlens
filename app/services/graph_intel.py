@@ -188,7 +188,7 @@ def _node_id(node) -> str:
     kind, value = node
     if kind == "APP":
         return f"APP:{value}"
-    digest = hashlib.sha1(value.encode()).hexdigest()[:12]
+    digest = hashlib.sha256(value.encode()).hexdigest()[:12]
     return f"{kind}:{digest}"
 
 

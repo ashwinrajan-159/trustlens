@@ -59,3 +59,9 @@ pytest==8.3.4
 pytest-asyncio==0.25.0
 pytest-cov==6.0.0
 httpx==0.28.1
+
+# ── Document forensics intelligence layer (app/forensics) ──
+pillow==12.2.0                 # ELA, EXIF, image ops
+opencv-python-headless==4.13.0.92  # copy-move, noise, screenshot, seal detection
+imagehash==4.3.2               # perceptual hashing for cross-application reuse
+scikit-image==0.26.0           # SSIM for signature/seal comparison

@@ -5,7 +5,7 @@ score can be explained signal-by-signal to a regulator or analyst.
 """
 from __future__ import annotations
 
-from sqlalchemy import JSON, Float, ForeignKey, String
+from sqlalchemy import JSON, Float, ForeignKey, Integer, String
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -26,6 +26,9 @@ class RiskAssessment(UUIDMixin, TimestampMixin, SoftDeleteMixin, Base):
     reasons: Mapped[list | None] = mapped_column(JSON, nullable=True)
     by_category: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     engine_version: Mapped[str] = mapped_column(String(32), default="1.0.0", nullable=False)
+    # Governed weight set in force when this score was computed (None = built-in defaults).
+    # Persisted so a historical score is reproducible with the weights of its time.
+    weight_config_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<RiskAssessment {self.total_score} {self.risk_tier.value}>"

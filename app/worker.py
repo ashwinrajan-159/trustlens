@@ -20,12 +20,14 @@ celery_app = Celery(
         "app.tasks.ocr",
         "app.tasks.extraction",
         "app.tasks.fraud",
+        "app.tasks.forensics",
         "app.tasks.identity",
         "app.tasks.cross_document",
         "app.tasks.property",
         "app.tasks.financial",
         "app.tasks.graph",
         "app.tasks.events",
+        "app.tasks.learning",
     ],
 )
 
@@ -45,11 +47,25 @@ celery_app.conf.update(
         "app.tasks.financial.*": {"queue": "default"},
         "app.tasks.graph.*": {"queue": "default"},
         "app.tasks.events.*": {"queue": "default"},
+        "app.tasks.learning.*": {"queue": "default"},
     },
     task_acks_on_failure_or_timeout=True,
     result_expires=3600,
     timezone="UTC",
     enable_utc=True,
+    beat_schedule={
+        # Durability backstop: re-publish any stuck outbox events every minute.
+        "replay-pending-events": {
+            "task": "app.tasks.events.replay_pending_events",
+            "schedule": 60.0,
+        },
+        # Drift backstop: nightly rebuild of knowledge-base projections from the
+        # immutable record (pattern counters + per-signal precision).
+        "recompute-knowledge-base": {
+            "task": "app.tasks.learning.recompute_knowledge_base",
+            "schedule": 24 * 60 * 60.0,
+        },
+    },
 )
 
 
