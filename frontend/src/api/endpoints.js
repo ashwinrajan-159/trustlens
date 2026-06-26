@@ -1,5 +1,5 @@
 // Thin, typed-ish wrappers over every backend service so pages never build URLs.
-import { req } from "./client";
+import { req, downloadBlob } from "./client";
 
 export const api = {
   // ── auth ──
@@ -26,6 +26,7 @@ export const api = {
   network: (id) => req(`/applications/${id}/network`),
   completeness: (id) => req(`/applications/${id}/completeness`),
   appEntities: (id) => req(`/applications/${id}/entities`),
+  regulatoryReport: (id) => downloadBlob(`/applications/${id}/regulatory-report`),
 
   // ── documents ──
   listDocuments: (appId) => req(`/applications/${appId}/documents`),

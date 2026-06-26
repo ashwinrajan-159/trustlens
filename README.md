@@ -19,12 +19,15 @@ second opinion (never the final word).
 - [What it does](#what-it-does)
 - [Architecture](#architecture)
 - [The analysis pipeline](#the-analysis-pipeline)
+- [The analyst closed loop](#the-analyst-closed-loop)
 - [Tech stack](#tech-stack)
 - [Project structure](#project-structure)
 - [Prerequisites](#prerequisites)
 - [Quickstart — run the whole app](#quickstart--run-the-whole-app)
+- [First run — click-through](#first-run--click-through)
 - [Backend — detailed build & run](#backend--detailed-build--run)
 - [Frontend — detailed build & run](#frontend--detailed-build--run)
+- [Screens](#screens)
 - [Configuration](#configuration)
 - [Testing & quality](#testing--quality)
 - [API surface](#api-surface)
@@ -35,8 +38,9 @@ second opinion (never the final word).
 
 ## What it does
 
-A loan application flows through an **idempotent, explainable analysis pipeline** and surfaces in an
-analyst workbench:
+A loan application flows through an **idempotent, explainable analysis pipeline**, then a
+human **closed loop** (investigate → senior review → learn), and surfaces in a role-gated analyst
+workbench:
 
 - **Document intake & OCR** — upload PDFs/images (validated by magic bytes); OCR via PyMuPDF (digital
   PDFs) with PaddleOCR as an optional engine for scanned images.
@@ -63,6 +67,15 @@ analyst workbench:
   reconciliation/replay, and a real-time engine that turns CRITICAL events into alerts sub-second.
 - **Alerting, cases & RBI compliance** — SLA-tracked fraud alerts with RBI reporting tier/deadline
   (FLASH ≥ ₹25 Cr, FMR-1 ≥ ₹1 Cr, quarterly ≥ ₹1 L), investigation cases, and FMR report generation.
+- **Fraud-ops closed loop** — analysts claim alerts and file investigation reports; a *different*
+  senior reviewer confirms or clears them (segregation of duties); outcomes feed a learning loop.
+- **Fraud pattern library & signal analytics** — confirmed cases auto-cluster into named fraud
+  patterns; per-signal precision is tracked with Wilson confidence intervals; signal weights are tuned
+  only through a **governed, versioned, dual-control** workflow (propose ≠ approve) — never auto-tuned.
+- **Regulatory Explainability Report (PDF)** — a per-application, analyst-generated PDF that
+  reconstructs *how* the decision was reached (score reasons, signal evidence, masked fields, RBI
+  classification) and proves it is **reproducible** (engine + weight-config versions) and
+  **tamper-evident** (audit hash-chain attestation). Generated locally; no external AI.
 - **Operations & audit** — operations dashboards, an immutable (WORM) audit trail with a tamper-evidence
   hash chain, and a role-gated React workbench.
 
@@ -74,15 +87,15 @@ analyst workbench:
 ┌──────────────┐      ┌───────────────┐      ┌──────────────────────────────────┐
 │ React + Vite │─────▶│   FastAPI     │─────▶│ PostgreSQL (apps, docs, entities, │
 │  SPA (5173)  │ JWT  │  REST (8000)  │ async│  signals, assessments, profiles,  │
-└──────────────┘      └──────┬────────┘ SQLA │  alerts, cases, audit[WORM],       │
-                             │ enqueue        │  event_log, ml_*)                  │
-                             ▼                └──────────────────────────────────┘
-                      ┌──────────────┐  broker   ┌──────────────────────────────┐
-                      │ Redis (6379) │──────────▶│ Celery worker                │
-                      └──────────────┘           │  analysis pipeline (chained) │
-                             ▲                    └──────┬───────────────────────┘
-              ┌──────────────┴────────┐                  │ docs in/out
-              │ Event bus (in-proc /  │◀──── outbox ──────┤
+└──────────────┘      └──────┬────────┘ SQLA │  alerts, cases, investigations,    │
+                             │ enqueue        │  patterns, weights, fingerprints,  │
+                             ▼                │  audit[WORM], event_log, ml_*)     │
+                      ┌──────────────┐ broker └──────────────────────────────────┘
+                      │ Redis (6379) │──────────▶┌──────────────────────────────┐
+                      └──────────────┘           │ Celery worker                │
+                             ▲                    │  analysis pipeline (chained) │
+              ┌──────────────┴────────┐           └──────┬───────────────────────┘
+              │ Event bus (in-proc /  │◀──── outbox ──────┤ docs in/out
               │ Kafka) + EventLog     │                   ▼
               └───────────────────────┘            ┌──────────────┐   ┌───────────┐
                                                    │ MinIO / S3   │   │ NetworkX  │
@@ -90,10 +103,10 @@ analyst workbench:
                                                    └──────────────┘   └───────────┘
 ```
 
-**Bounded modular monolith** — each domain (`ingestion/ocr`, `extraction`, `fraud-engine`,
-`identity`, `property`, `financial`, `graph`, `ml`, `events`, `alerting`, `cases`, `compliance`) lives
-behind a service-class interface so it can later be extracted into its own deployable. Async tasks run
-on Celery; cross-cutting durability is provided by a transactional-outbox `event_log`.
+**Bounded modular monolith** — each domain (`ingestion/ocr`, `extraction`, `fraud-engine`, `forensics`,
+`identity`, `property`, `financial`, `graph`, `ml`, `events`, `alerting`, `cases`, `fraud-ops`,
+`compliance`) lives behind a service-class interface so it can later be extracted into its own
+deployable. Async tasks run on Celery; cross-cutting durability is a transactional-outbox `event_log`.
 
 ---
 
@@ -110,7 +123,36 @@ run_ocr_pipeline → extract_entities → run_fraud_engine → run_document_fore
 ```
 
 Document status flows `QUEUED → PROCESSING → PROCESSED | FAILED`. The deterministic engine remains the
-system of record; ML inference and external verification are advisory and degrade gracefully.
+system of record; ML inference and document forensics are advisory and degrade gracefully.
+
+---
+
+## The analyst closed loop
+
+Beyond automated scoring, TrustLens models the human workflow a bank actually runs — with
+**segregation of duties** and a **learning loop** that keeps detection honest:
+
+```
+CRITICAL signal ─▶ Fraud alert (SLA) ─▶ Analyst claims + files Investigation report
+        ▲                                          │
+        │                                          ▼
+   Signal weights                       Senior reviewer (≠ analyst) confirms / clears
+   (governed, versioned)                           │
+        │                                          ▼
+   Weight governance ◀── Signal analytics ◀── Outcome feeds learning ─▶ Fraud pattern library
+   (propose ≠ approve)     (precision + Wilson CI)                       (auto-clustered patterns)
+```
+
+- **Investigation → review** — an analyst claims an alert and submits findings + a recommendation; a
+  **different** senior reviewer records the final decision (CONFIRMED_FRAUD / FALSE_POSITIVE / …). The
+  investigator can never approve their own case.
+- **Learning** — confirmed/false-positive outcomes update per-signal precision (with Wilson confidence
+  intervals, so small samples don't mislead) and cluster into a named **fraud pattern library**.
+- **Governed tuning** — signal weights are changed only via a versioned propose→approve workflow; every
+  risk assessment is stamped with the weight-config version used, so any past score is reproducible.
+- **Regulatory report** — at any point an analyst can export the per-application **Regulatory
+  Explainability Report (PDF)**: the auditable artifact that ties the score, signals, evidence, RBI
+  classification and the tamper-evident audit chain together.
 
 ---
 
@@ -127,6 +169,7 @@ system of record; ML inference and external verification are advisory and degrad
 | **Document forensics** | OpenCV (headless), Pillow, imagehash (pHash reuse), scikit-image (SSIM); confidence-tiered analyzers |
 | **ML (local)** | scikit-learn, XGBoost (optional), SHAP (optional), scipy (KS drift), joblib; MLflow optional |
 | **Graph** | NetworkX (in-memory analytics); Neo4j optional for persistence |
+| **Reporting** | reportlab (pure-Python PDF — Regulatory Explainability Report, offline) |
 | **Security** | JWT (access+refresh, rotation), Argon2 password hashing, Fernet/MultiFernet field encryption, immutable WORM audit, rate limiting, security headers |
 | **Frontend** | React 19, Vite 6, React Router 7, TailwindCSS 3, lucide-react |
 | **Tooling** | pytest + pytest-cov, ruff, Docker / docker-compose, GitHub Actions CI |
@@ -142,21 +185,24 @@ truestlens/
 │   ├── config.py              # pydantic-settings (env-driven)
 │   ├── database.py            # async engine + session factory
 │   ├── worker.py              # Celery app + task routing
-│   ├── api/v1/                # REST routers (auth, applications, documents, ml,
-│   │                          #   alerts, cases, operations, health)
+│   ├── api/v1/                # REST routers (auth, applications, documents, ml, alerts,
+│   │                          #   cases, operations, fraudops, health)
 │   ├── core/                  # security, encryption, logging, rate limit, middleware, files
-│   ├── models/                # SQLAlchemy ORM + central enums
+│   ├── models/                # SQLAlchemy ORM + central enums (incl. fraudops, document_fingerprint)
 │   ├── schemas/               # Pydantic request/response models
 │   ├── repositories/          # data-access layer
-│   ├── services/              # business logic (auth, document, ocr, extraction,
-│   │                          #   identity, cross_document, property_intel, financial,
-│   │                          #   graph_intel, ml*, alerting, cases, rbi, storage, audit)
+│   ├── services/              # business logic — auth, document, ocr, extraction, identity,
+│   │                          #   cross_document, property_intel, financial, graph_intel, ml*,
+│   │                          #   alerting, cases, rbi, storage, audit; fraud-ops closed loop
+│   │                          #   (investigation, review, fraud_pattern, signal_analytics,
+│   │                          #   weight_governance); regulatory_report (PDF)
 │   ├── fraud_engine/          # standalone deterministic engine (rules, validators, scorer)
 │   ├── forensics/             # image/PDF forensics layer (metadata, font, similarity/reuse,
 │   │                          #   copy-move, screenshot, signatures, seals, ELA, noise)
 │   └── tasks/                 # Celery pipeline tasks (ocr, extraction, fraud, forensics,
 │                              #   identity, cross_document, property, financial, graph, events)
-├── alembic/versions/          # database migrations (001 … 014; 014 = document_fingerprints)
+├── alembic/versions/          # database migrations (001 … 014):
+│                              #   013 = fraud-ops closed loop · 014 = document_fingerprints
 ├── tests/                     # pytest suite (SQLite in-memory; no external services)
 ├── frontend/                  # React + Vite SPA
 │   └── src/{api,auth,components,lib,pages}/
@@ -164,6 +210,7 @@ truestlens/
 ├── Dockerfile                 # backend image
 ├── requirements.txt
 ├── pyproject.toml             # ruff / pytest / coverage config
+├── TRUSTLENS_BUILD_SPEC.md    # master build specification / implementation prompt
 ├── RETENTION.md               # DPDP data-retention & erasure policy
 └── IMPROVEMENTS.md            # hardening backlog
 ```
@@ -180,35 +227,67 @@ truestlens/
 
 ## Quickstart — run the whole app
 
-From the repo root (`truestlens/`):
+From the repo root (`truestlens/`). Five things must run: **infra (Docker)**, **API**, **worker**,
+**frontend** — backed by the **database**.
 
 ```bash
-# 1. Infra (Postgres + Redis + MinIO)
+# 1. Infra — Postgres + Redis + MinIO (Docker)
 docker compose up -d postgres redis minio
 
 # 2. Backend deps + env
-python -m venv .venv && . .venv/Scripts/activate     # Windows: .venv\Scripts\Activate.ps1
+python -m venv .venv
+.venv\Scripts\activate                # Windows  (macOS/Linux: source .venv/bin/activate)
 pip install -r requirements.txt
-cp .env.example .env                                  # then set JWT_SECRET_KEY + FERNET_KEY (below)
-python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"  # → FERNET_KEY
+copy .env.example .env                 # Windows  (macOS/Linux: cp .env.example .env)
+#   then set in .env:  JWT_SECRET (≥32 chars) and FERNET_KEY:
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 
-# 3. Database
+# 3. Database — migrate + create the object-storage bucket
 alembic upgrade head
 python -c "import asyncio; from app.services.storage import StorageService; asyncio.run(StorageService().ensure_bucket())"
 
-# 4. Run API + worker (two terminals)
+# 4. API + worker  (two terminals)
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-celery -A app.worker.celery_app worker --pool=solo -Q ocr,default --loglevel=info   # use --pool=solo on Windows
+celery -A app.worker.celery_app worker --pool=solo --loglevel=info     # --pool=solo on Windows; prefork on Linux
 
-# 5. Frontend (third terminal)
+# 5. Frontend  (third terminal)
 cd frontend && npm install && npm run dev
 ```
 
-Open **http://localhost:5173** — register, create an application, upload documents, and watch the
-risk/signals/identity/graph populate. API docs at **http://localhost:8000/docs**.
+Open **http://localhost:5173**. API docs at **http://localhost:8000/docs**; health at
+**http://localhost:8000/api/v1/health/ready**.
 
 > The Vite dev server proxies `/api` → `http://localhost:8000`, so the SPA is same-origin in dev
-> (no CORS setup needed).
+> (no CORS setup needed). MinIO console is on **http://localhost:9001** (API on `:9000`).
+
+**Run everything in containers instead** (API + worker + infra):
+
+```bash
+docker compose up -d --build              # builds api+worker images, runs migrations, starts the stack
+docker compose --profile workers up -d    # also start the Celery worker service
+docker compose logs -f api
+docker compose down                       # stop (add -v to wipe data volumes)
+```
+
+---
+
+## First run — click-through
+
+The database starts empty. To see the full system end-to-end:
+
+1. **Register** at `/register` (creates a CUSTOMER), then **Apply** — create a loan application and
+   upload documents (Aadhaar, PAN, salary slip, bank statement, …).
+2. **Submit** the application — the Celery pipeline runs OCR → extraction → fraud engine → forensics →
+   identity/cross-doc/property/financial → graph → risk score, and raises alerts for CRITICAL findings.
+3. Sign in as an **analyst** to reach the workbench: **Review Queue**, **Analyst Review** (per-signal
+   reasons + ML second opinion + **Regulatory Report (PDF)** button), **Network** graph, **Alerts**,
+   **Cases**, **Operations**, **Investigation**, **Senior Review**, **Knowledge** (patterns / signal
+   analytics / weight governance), **ML Platform**.
+4. On **Analyst Review**, click **Regulatory Report** to download the per-application explainability PDF.
+
+> Analyst/senior accounts: create users with the appropriate role (CUSTOMER / ANALYST /
+> SENIOR_ANALYST / ADMIN). Role gates the workbench nav client-side; the backend enforces RBAC on every
+> request regardless.
 
 ---
 
@@ -216,7 +295,7 @@ risk/signals/identity/graph populate. API docs at **http://localhost:8000/docs**
 
 ```bash
 # install
-python -m venv .venv && . .venv/Scripts/activate
+python -m venv .venv && .venv\Scripts\activate
 pip install -r requirements.txt
 
 # database migrations (forward / inspect / down)
@@ -228,19 +307,10 @@ alembic downgrade -1
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 # run the analysis worker (solo pool required on Windows; prefork on Linux)
-celery -A app.worker.celery_app worker -Q ocr,default --loglevel=info
+celery -A app.worker.celery_app worker --pool=solo --loglevel=info
 
-# (optional) event reconciliation / scheduled jobs run as Celery tasks:
+# (optional) event reconciliation runs as a Celery task:
 #   app.tasks.events.replay_pending_events  — re-publishes any PENDING outbox events
-```
-
-**Build the backend Docker image** and run the full stack in containers:
-
-```bash
-docker compose up -d --build              # builds api + worker images, runs migrations, starts everything
-docker compose --profile workers up -d    # also start the Celery worker service
-docker compose logs -f api
-docker compose down                       # stop (add -v to wipe volumes)
 ```
 
 The compose `migrate` service runs `alembic upgrade head` to completion before `api` starts.
@@ -251,21 +321,38 @@ The compose `migrate` service runs `alembic upgrade head` to completion before `
 
 ```bash
 cd frontend
-
-npm install            # install deps (React 19, Vite, Tailwind, React Router, lucide-react)
+npm install            # React 19, Vite, Tailwind, React Router, lucide-react
 npm run dev            # dev server with HMR at http://localhost:5173 (proxies /api → :8000)
 npm run build          # production bundle → frontend/dist/
 npm run preview        # serve the production build locally
 ```
 
 To point the SPA at a non-default API origin, set `VITE_API_TARGET` (dev proxy target) or
-`VITE_API_BASE` (the API path prefix, default `/api/v1`). The production `dist/` is static and can be
-served from any web server / behind the API's origin.
+`VITE_API_BASE` (the API path prefix, default `/api/v1`). The production `dist/` is static.
 
-**How the SPA connects to the services:** a single API client (`src/api/client.js`) holds the JWT,
-performs a transparent refresh-and-retry on `401`, and surfaces the backend error envelope; every
-endpoint is wrapped in `src/api/endpoints.js`. `AuthContext` decodes the JWT role for client-side nav
-gating — the backend still enforces RBAC on every request.
+**How the SPA connects:** a single API client (`src/api/client.js`) holds the JWT, performs a
+transparent refresh-and-retry on `401`, surfaces the backend error envelope, and (for the PDF report)
+streams a binary blob download. Every endpoint is wrapped in `src/api/endpoints.js`. `AuthContext`
+decodes the JWT role for client-side nav gating — the backend still enforces RBAC on every request.
+
+---
+
+## Screens
+
+`frontend/src/pages/` — the role-gated workbench:
+
+| Page | Purpose |
+|---|---|
+| `Landing`, `Login`, `Register`, `Account` | marketing/auth + DPDP consent withdrawal |
+| `Apply`, `Applications`, `AppDetail` | customer application + document upload; full application view |
+| `Dashboard` | portfolio overview / KPIs |
+| `ReviewQueue`, `AnalystReview` | analyst triage; per-signal reasons, ML opinion, **Regulatory Report** |
+| `NetworkGraph` | entity-relationship fraud network visualization |
+| `Alerts`, `Cases` | SLA-tracked alerts; investigation cases |
+| `Investigation`, `SeniorReview` | file investigation reports; senior confirm/clear (segregation of duties) |
+| `Knowledge` | fraud pattern library · signal precision (Wilson CI) · governed weight proposals |
+| `Operations` | live ops dashboard, active threats, SLA breaches, event log |
+| `MLPlatform` | train / approve / promote models, predictions, explanations, drift |
 
 ---
 
@@ -277,7 +364,7 @@ All settings come from the environment (or a local `.env`; see `.env.example`). 
 |---|---|---|
 | `ENVIRONMENT` | `development` / `staging` / `production` | `development` |
 | `DATABASE_URL` | async Postgres DSN | `postgresql+asyncpg://trustlens:trustlens@localhost:5432/trustlens` |
-| `JWT_SECRET_KEY` | JWT signing secret (≥32 chars in prod) | — (required) |
+| `JWT_SECRET` | JWT signing secret (≥32 chars in prod) | — (required) |
 | `FERNET_KEY` | field-encryption key (use KMS/HSM in prod) | — (ephemeral in dev if unset) |
 | `STORAGE_ENDPOINT_URL` / `STORAGE_*` | MinIO/S3 object storage | `http://localhost:9000`, `minioadmin` |
 | `REDIS_URL` / `CELERY_BROKER_URL` | Redis broker | `redis://localhost:6379` |
@@ -297,9 +384,10 @@ ruff check app tests         # lint
 python -m app.fraud_engine.smoke_test   # standalone fraud-engine smoke test
 ```
 
-The suite covers core primitives, auth/RBAC, the fraud engine + every intelligence layer, the async
-pipeline (with injected fake OCR/storage), events/outbox, ML lifecycle, alerting/cases and RBI logic —
-with a coverage gate. CI (GitHub Actions) additionally runs ruff, bandit, pip-audit and a secret scan.
+The suite covers core primitives, auth/RBAC, the fraud engine + every intelligence layer, document
+forensics, the async pipeline (with injected fake OCR/storage), events/outbox, ML lifecycle, the
+fraud-ops closed loop and RBI logic — with a coverage gate. CI (GitHub Actions) additionally runs ruff,
+bandit, pip-audit and a secret scan.
 
 ---
 
@@ -310,11 +398,13 @@ groups under `/api/v1`:
 
 - `auth` — register, login, refresh, logout, me, MFA (TOTP), DPDP consent withdrawal
 - `applications` — CRUD + submit/decision + `risk`, `signals`, `identity`, `property`, `financial`,
-  `graph`, `network`, `completeness`, `entities`
+  `graph`, `network`, `completeness`, `entities`, **`regulatory-report` (PDF, analyst-only, audited)**
 - `documents` — upload (multipart), list, detail (+ OCR summary), extracted entities, presigned download
 - `ml` — train / models / approve / reject / promote / predict / explain / labels / drift
-- `alerts` — list / acknowledge / resolve / RBI FMR report
+- `alerts` — list / acknowledge / resolve / claim / transition / RBI FMR report
 - `cases` — create / list / assign / close
+- `fraudops` (closed loop) — submit/list investigations, review queue, record review decision,
+  `knowledge/patterns` (+ merge), `signal-analytics`, `weights` (propose / activate)
 - `operations` — overview / active-threats / sla-breaches / event log / replay
 - `health` — live / ready
 
@@ -325,13 +415,17 @@ Full interactive docs: **`/docs`** (OpenAPI). Sensitive fields are masked in eve
 ## Security & compliance
 
 - **Zero PII leakage** — no PII in logs/events/external calls; sensitive fields encrypted at rest
-  (Fernet/MultiFernet, KMS-swappable) and masked in responses (`XXXXXE1234F`).
-- **Immutable audit** — WORM `audit_logs` (Postgres trigger blocks UPDATE/DELETE) + SHA-256 hash chain
-  for tamper-evidence; every state change and PII access is recorded with a correlation id.
+  (Fernet/MultiFernet, KMS-swappable) and masked in responses (`XXXXXE1234F`). The Regulatory Report
+  shows masked identifiers only.
+- **Immutable audit** — WORM `audit_logs` (Postgres rules block UPDATE/DELETE) + SHA-256 hash chain for
+  tamper-evidence; every state change, PII access and report download is recorded with a correlation id.
+- **Segregation of duties** — investigators cannot review their own cases; weight changes require a
+  separate approver (propose ≠ approve).
 - **AuthN/Z** — Argon2 hashing, short-lived access + rotating refresh tokens (reuse detection), RBAC,
   rate limiting on `/auth` and `/ml/predict`, TOTP MFA for privileged roles, security headers.
 - **RBI Fraud Management** — exposure-threshold engine (FLASH/FMR-1/quarterly), SLA deadlines,
-  `rbi_reporting_required` flagging and FMR-shaped report generation.
+  `rbi_reporting_required` flagging, FMR-shaped report generation, and the per-application Regulatory
+  Explainability Report (reproducible via engine + weight-config versions; audit-chain attested).
 - **DPDP Act 2023** — explicit consent capture/withdrawal and a documented retention/erasure policy
   (`RETENTION.md`) that preserves the immutable audit trail.
 
@@ -341,7 +435,8 @@ Full interactive docs: **`/docs`** (OpenAPI). Sensitive fields are masked in eve
 
 The platform runs with **no internet access**:
 
-- All compute is local — deterministic rules, OCR, graph analytics and the ML model (scikit-learn).
+- All compute is local — deterministic rules, OCR, document forensics, graph analytics, the ML model
+  (scikit-learn) and PDF report generation (reportlab).
 - Datastores (Postgres, Redis, MinIO, optional Kafka) run as local containers.
 - **No cloud AI / LLM APIs** are ever called; the deterministic engine is the system of record and ML
   is an advisory local second opinion.

@@ -77,4 +77,39 @@ export async function req(path, { method = "GET", body, formData, auth = true, r
   return data;
 }
 
+// Fetch a binary artifact (e.g. a PDF report) and trigger a browser download.
+// Reuses the same bearer token + one-shot refresh as req(), but returns a Blob
+// instead of parsing JSON.
+export async function downloadBlob(path, { filename, retry = true } = {}) {
+  const headers = {};
+  if (store.access) headers.Authorization = `Bearer ${store.access}`;
+
+  const res = await fetch(`${BASE}${path}`, { method: "GET", headers });
+
+  if (res.status === 401 && retry && (await doRefresh())) {
+    return downloadBlob(path, { filename, retry: false });
+  }
+  if (!res.ok) {
+    const data = await parse(res);
+    const err = data && data.error ? data.error : {};
+    throw new ApiError(res.status, err.code, err.message || `Download failed (${res.status})`);
+  }
+
+  // Prefer the server's Content-Disposition filename when present.
+  let name = filename;
+  const cd = res.headers.get("Content-Disposition") || "";
+  const m = cd.match(/filename="?([^"]+)"?/i);
+  if (m) name = m[1];
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name || "download";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export const tokens = store;

@@ -65,3 +65,6 @@ pillow==12.2.0                 # ELA, EXIF, image ops
 opencv-python-headless==4.13.0.92  # copy-move, noise, screenshot, seal detection
 imagehash==4.3.2               # perceptual hashing for cross-application reuse
 scikit-image==0.26.0           # SSIM for signature/seal comparison
+
+# ── Regulatory explainability report (app/services/regulatory_report) ──
+reportlab==4.2.5               # pure-Python PDF generation (offline / air-gap safe)

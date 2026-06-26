@@ -49,3 +49,6 @@ docker-compose.override.yml
 # real ID-card dataset (PII) — never publish
 ds/
 "image forensics"/
+
+# agent/session config
+.claude/

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { Brain, Network as NetworkIcon } from "lucide-react";
+import { Brain, Network as NetworkIcon, FileText } from "lucide-react";
 import { api } from "../api/endpoints";
 import { useAsync } from "../lib/useAsync";
 import { Badge, Button, Card, EmptyState, ErrorBanner, Field, Input, Spinner } from "../components/ui";
@@ -35,6 +35,13 @@ export default function AnalystReview() {
     catch (e) { setError(e); }
   }
 
+  const [reportBusy, setReportBusy] = useState(false);
+  async function downloadReport() {
+    setReportBusy(true); setError(null);
+    try { await api.regulatoryReport(id); }
+    catch (e) { setError(e); } finally { setReportBusy(false); }
+  }
+
   if (loading) return <Spinner />;
   if (!app) return <ErrorBanner error={{ message: "Application not found" }} />;
   const decided = ["APPROVED", "REJECTED"].includes(app.status);
@@ -50,6 +57,9 @@ export default function AnalystReview() {
           <Badge className={statusStyle(app.status)}>{app.status}</Badge>
           {app.risk_tier && <Badge className={tierStyle(app.risk_tier)}>{app.risk_tier} · {app.current_risk_score}</Badge>}
           <Link to={`/app/network/${id}`}><Button variant="secondary"><NetworkIcon size={14} /> Network</Button></Link>
+          <Button variant="secondary" onClick={downloadReport} disabled={reportBusy}>
+            <FileText size={14} /> {reportBusy ? "Generating…" : "Regulatory Report"}
+          </Button>
           <Link to={`/app/applications/${id}`}><Button variant="secondary">Full detail</Button></Link>
         </div>
       </div>

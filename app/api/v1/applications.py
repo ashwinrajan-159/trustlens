@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query, Request
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -171,6 +172,40 @@ async def get_network(
         application_id, user_id=user.id, role=user.role
     )
     return NetworkResponse(**data)
+
+
+@router.get("/{application_id}/regulatory-report")
+async def regulatory_report(
+    application_id: str,
+    request: Request,
+    user: CurrentUser = Depends(require_analyst),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Generate the per-application Regulatory Explainability Report (PDF).
+
+    Analyst+ only. The generation itself is recorded in the WORM audit trail.
+    """
+    from app.models.enums import AuditAction
+    from app.services.audit import AuditService
+    from app.services.regulatory_report import RegulatoryReportService
+
+    pdf, filename = await RegulatoryReportService(db).build_pdf(
+        application_id, user_id=user.id, role=user.role
+    )
+    await AuditService(db).record(
+        action=AuditAction.DOWNLOAD,
+        entity_type="application",
+        entity_id=application_id,
+        actor_id=user.id,
+        after={"artifact": "regulatory_report_pdf", "filename": filename},
+        ip_address=client_ip(request),
+    )
+    await db.commit()
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/{application_id}/submit", response_model=ApplicationPublic)
