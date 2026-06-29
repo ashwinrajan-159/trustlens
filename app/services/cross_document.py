@@ -15,22 +15,78 @@ from dataclasses import dataclass, field
 
 from app.fraud_engine.result import HIGH, MEDIUM, RuleResult
 
-# "income proof" is satisfied by any one of these document types.
-_INCOME_PROOF = {"SALARY_SLIP", "BANK_STATEMENT", "ITR", "FORM_16"}
+# ── Per-loan-type document requirements ────────────────────────────────────────
+# A "group" is satisfied when ANY one of its document types is present (e.g. identity
+# is satisfied by Aadhaar OR PAN OR …). ``required`` groups gate submission; the rest
+# are recommended (advisory only — never block, never solo-deny). One source of truth
+# for: the submit gate, the requirements endpoint, and the completeness fraud signal.
 
-# Required (CRITICAL if missing) and recommended (MEDIUM if missing) by loan type.
-_CRITICAL_REQUIRED = {
-    "HOME": {"PAN", "AADHAAR", "BANK_STATEMENT", "SALE_DEED", "VALUATION_REPORT"},
-    "PERSONAL": {"PAN", "AADHAAR", "BANK_STATEMENT"},
-    "AUTO": {"PAN", "AADHAAR", "BANK_STATEMENT"},
-    "BUSINESS": {"PAN", "AADHAAR", "BANK_STATEMENT", "GST_RETURN"},
+@dataclass(frozen=True)
+class DocGroup:
+    key: str
+    label: str
+    any_of: tuple[str, ...]
+    required: bool = True
+
+
+_IDENTITY = ("AADHAAR", "PAN", "PASSPORT", "VOTER_ID", "DRIVING_LICENSE")
+_INCOME = ("SALARY_SLIP", "ITR")              # salaried slip or tax return
+_BIZ_TAX = ("ITR", "GST_RETURN")
+_BIZ_REG = ("GST_RETURN", "BUSINESS_PROOF")   # GST / Udyam / Shop & Establishment proof
+_PROPERTY = ("SALE_DEED", "TITLE_DEED")
+
+LOAN_REQUIREMENTS: dict[str, list[DocGroup]] = {
+    "PERSONAL": [
+        DocGroup("identity", "Identity (Aadhaar / PAN / Passport / Voter ID / Driving License)", _IDENTITY),
+        DocGroup("income", "Income proof (Salary Slip or ITR)", _INCOME),
+        DocGroup("bank", "Bank statement", ("BANK_STATEMENT",)),
+    ],
+    "HOME": [
+        DocGroup("identity", "Identity (Aadhaar / PAN)", _IDENTITY),
+        DocGroup("income", "Income proof (Salary Slip or ITR)", _INCOME),
+        DocGroup("bank", "Bank statement", ("BANK_STATEMENT",)),
+        DocGroup("property", "Property ownership (Sale Deed or Title Deed)", _PROPERTY),
+        DocGroup("plan", "Approved building plan (under-construction property)", ("APPROVED_PLAN",), required=False),
+    ],
+    "BUSINESS": [
+        DocGroup("identity", "Identity (Aadhaar / PAN)", _IDENTITY),
+        DocGroup("bank", "Bank statement", ("BANK_STATEMENT",)),
+        DocGroup("tax", "ITR or GST Return", _BIZ_TAX),
+        DocGroup("registration", "Business registration proof (GST / Udyam / Shop License)", _BIZ_REG),
+    ],
+    "AUTO": [
+        DocGroup("identity", "Identity (Aadhaar / PAN)", _IDENTITY),
+        DocGroup("income", "Income proof (Salary Slip or ITR)", _INCOME),
+        DocGroup("bank", "Bank statement", ("BANK_STATEMENT",)),
+        DocGroup("license", "Driving License (preferred)", ("DRIVING_LICENSE",), required=False),
+    ],
 }
-_RECOMMENDED = {
-    "HOME": {"FORM_16", "PROPERTY_TAX", "ENCUMBRANCE_CERTIFICATE", "APPROVED_PLAN"},
-    "PERSONAL": {"FORM_16"},
-    "AUTO": {"FORM_16"},
-    "BUSINESS": {"BALANCE_SHEET", "PROFIT_LOSS"},
-}
+
+
+def evaluate_requirements(loan_type: str, present: set[str]) -> dict:
+    """Evaluate a loan type's document requirements against the present doc types.
+
+    Returns a structured status (per-group ``ok`` + the labels of any unmet
+    required/recommended groups + an overall ``satisfied`` flag).
+    """
+    groups = LOAN_REQUIREMENTS.get(loan_type, LOAN_REQUIREMENTS["PERSONAL"])
+    status = []
+    for g in groups:
+        present_in_group = sorted(set(g.any_of) & present)
+        status.append({
+            "key": g.key, "label": g.label, "any_of": list(g.any_of),
+            "required": g.required, "present": present_in_group, "ok": bool(present_in_group),
+        })
+    missing_required = [g["label"] for g in status if g["required"] and not g["ok"]]
+    missing_recommended = [g["label"] for g in status if not g["required"] and not g["ok"]]
+    return {
+        "loan_type": loan_type,
+        "groups": status,
+        "missing_required": missing_required,
+        "missing_recommended": missing_recommended,
+        "satisfied": not missing_required,
+    }
+
 
 SALARY_TOLERANCE = 0.10  # 10% — net pay vs bank credit may differ by deductions/rounding
 
@@ -44,16 +100,10 @@ class CrossDocContext:
 
 
 def compute_completeness(loan_type: str, present: set[str]) -> tuple[list[str], list[str]]:
-    """Return (missing_critical, missing_recommended) for a loan type."""
-    required = set(_CRITICAL_REQUIRED.get(loan_type, _CRITICAL_REQUIRED["PERSONAL"]))
-    recommended = set(_RECOMMENDED.get(loan_type, set()))
-
-    missing_critical = sorted(required - present)
-    # Income proof is required but satisfiable by any income doc.
-    if not (present & _INCOME_PROOF):
-        missing_critical.append("INCOME_PROOF")
-    missing_recommended = sorted(recommended - present)
-    return missing_critical, missing_recommended
+    """Return (missing_required_labels, missing_recommended_labels) for a loan type,
+    derived from the single ``LOAN_REQUIREMENTS`` spec."""
+    r = evaluate_requirements(loan_type, present)
+    return r["missing_required"], r["missing_recommended"]
 
 
 def validate(ctx: CrossDocContext) -> list[RuleResult]:

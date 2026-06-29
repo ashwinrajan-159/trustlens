@@ -16,6 +16,7 @@ from app.core.exceptions import (
     AuthorizationError,
     NotFoundError,
     StateTransitionError,
+    ValidationError,
 )
 from app.core.logging import get_logger
 from app.core.security import new_id
@@ -142,8 +143,45 @@ class ApplicationService:
                 f"Cannot move application from {app.status.value} to {target.value}"
             )
 
-    async def submit(self, app_id: str, *, user_id: str, role: UserRole, ip: str | None = None) -> Application:
+    async def _present_doc_types(self, app_id: str) -> set[str]:
+        """Document types currently attached to the application (any OCR status)."""
+        from sqlalchemy import select
+
+        from app.models.document import Document
+
+        rows = (
+            await self.session.execute(
+                select(Document.document_type).where(
+                    Document.application_id == app_id,
+                    Document.deleted_at.is_(None),
+                    Document.is_current_version.is_(True),
+                )
+            )
+        ).scalars().all()
+        return {getattr(t, "value", t) for t in rows}
+
+    async def get_requirements(self, app_id: str, *, user_id: str, role: UserRole) -> dict:
+        """Per-loan-type required-document checklist with live satisfaction status."""
+        from app.services.cross_document import evaluate_requirements
+
         app = await self.get_for_user(app_id, user_id=user_id, role=role)
+        present = await self._present_doc_types(app_id)
+        return evaluate_requirements(app.loan_type.value, present)
+
+    async def submit(self, app_id: str, *, user_id: str, role: UserRole, ip: str | None = None) -> Application:
+        from app.services.cross_document import evaluate_requirements
+
+        app = await self.get_for_user(app_id, user_id=user_id, role=role)
+
+        # Gate: the loan type's mandatory documents must be attached before submission.
+        present = await self._present_doc_types(app_id)
+        req = evaluate_requirements(app.loan_type.value, present)
+        if not req["satisfied"]:
+            raise ValidationError(
+                f"Cannot submit a {app.loan_type.value} loan application — "
+                "missing required documents: " + "; ".join(req["missing_required"])
+            )
+
         before = app.status.value
         self._transition(app, ApplicationStatus.SUBMITTED)
         app.status = ApplicationStatus.SUBMITTED

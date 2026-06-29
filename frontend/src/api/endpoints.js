@@ -26,6 +26,7 @@ export const api = {
   graph: (id) => req(`/applications/${id}/graph`),
   network: (id) => req(`/applications/${id}/network`),
   completeness: (id) => req(`/applications/${id}/completeness`),
+  requirements: (id) => req(`/applications/${id}/requirements`),
   appEntities: (id) => req(`/applications/${id}/entities`),
   regulatoryReport: (id) => downloadBlob(`/applications/${id}/regulatory-report`),
 

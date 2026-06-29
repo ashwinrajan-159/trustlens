@@ -12,6 +12,20 @@ async def _auth_headers(client, email="bob@example.com"):
     return {"Authorization": f"Bearer {tokens['access_token']}"}
 
 
+# Minimal magic-bytes-valid PDF for upload (content type detected from the header).
+_PDF = b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"
+
+
+async def _upload(client, h, app_id, dtype):
+    """Attach a document so an application meets its required-document gate."""
+    return await client.post(
+        f"/api/v1/applications/{app_id}/documents",
+        data={"document_type": dtype},
+        files={"file": (f"{dtype.lower()}.pdf", _PDF, "application/pdf")},
+        headers=h,
+    )
+
+
 @pytest.mark.asyncio
 async def test_create_application_draft(client):
     h = await _auth_headers(client)
@@ -36,6 +50,9 @@ async def test_submit_transitions_to_submitted(client):
             headers=h,
         )
     ).json()["id"]
+    # PERSONAL loan requires identity + income proof + bank statement.
+    for t in ("PAN", "SALARY_SLIP", "BANK_STATEMENT"):
+        await _upload(client, h, app_id, t)
     r = await client.post(f"/api/v1/applications/{app_id}/submit", headers=h)
     assert r.status_code == 200
     assert r.json()["status"] == "SUBMITTED"
@@ -51,9 +68,33 @@ async def test_double_submit_is_invalid_transition(client):
             headers=h,
         )
     ).json()["id"]
+    # AUTO loan requires identity + income proof + bank statement.
+    for t in ("PAN", "SALARY_SLIP", "BANK_STATEMENT"):
+        await _upload(client, h, app_id, t)
     await client.post(f"/api/v1/applications/{app_id}/submit", headers=h)
     r = await client.post(f"/api/v1/applications/{app_id}/submit", headers=h)
     assert r.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_submit_blocked_without_required_documents(client):
+    h = await _auth_headers(client, "gate@example.com")
+    app_id = (
+        await client.post(
+            "/api/v1/applications",
+            json={"loan_type": "HOME", "loan_amount_requested": "5000000"},
+            headers=h,
+        )
+    ).json()["id"]
+    # No documents attached → submission must be rejected by the requirements gate.
+    r = await client.post(f"/api/v1/applications/{app_id}/submit", headers=h)
+    assert r.status_code == 422
+
+    # The requirements endpoint reports it as unsatisfied with the missing groups.
+    rq = await client.get(f"/api/v1/applications/{app_id}/requirements", headers=h)
+    assert rq.status_code == 200
+    assert rq.json()["satisfied"] is False
+    assert rq.json()["missing_required"]
 
 
 @pytest.mark.asyncio

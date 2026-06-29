@@ -14,10 +14,13 @@ from tests.conftest import _SessionFactory
 
 def test_home_loan_missing_core_docs():
     missing_critical, missing_recommended = compute_completeness("HOME", {"PAN"})
-    assert "AADHAAR" in missing_critical
-    assert "SALE_DEED" in missing_critical
-    assert "INCOME_PROOF" in missing_critical  # no income doc present
-    assert "FORM_16" in missing_recommended
+    # PAN satisfies the identity group; income proof, bank statement and property
+    # ownership are still missing (group-based, human-readable labels).
+    assert any("Income proof" in m for m in missing_critical)
+    assert any("Bank statement" in m for m in missing_critical)
+    assert any("Property ownership" in m for m in missing_critical)
+    assert not any("Identity" in m for m in missing_critical)
+    assert any("Approved building plan" in m for m in missing_recommended)
 
 
 def test_home_loan_complete_when_all_present():
@@ -120,12 +123,13 @@ async def test_completeness_endpoint_reflects_uploads(client):
     r0 = await client.get(f"/api/v1/applications/{app_id}/completeness", headers=h)
     assert r0.status_code == 200
     assert r0.json()["is_complete"] is False
-    assert "PAN" in r0.json()["missing_critical"]
+    assert any("Identity" in m for m in r0.json()["missing_critical"])
 
     await _upload_and_run(client, h, app_id, "PAN", "pan.pdf", "PAN: ABCDE1234F\n")
     r1 = await client.get(f"/api/v1/applications/{app_id}/completeness", headers=h)
     assert "PAN" in r1.json()["present"]
-    assert "PAN" not in r1.json()["missing_critical"]
+    # PAN now satisfies the identity requirement.
+    assert not any("Identity" in m for m in r1.json()["missing_critical"])
 
 
 @pytest.mark.asyncio

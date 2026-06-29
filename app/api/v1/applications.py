@@ -128,6 +128,19 @@ async def get_completeness(
     return CompletenessResponse(**data)
 
 
+@router.get("/{application_id}/requirements")
+async def get_requirements(
+    application_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Per-loan-type required-document checklist with live satisfaction status
+    (drives the upload-step gate; submission is blocked until ``satisfied`` is true)."""
+    return await ApplicationService(db).get_requirements(
+        application_id, user_id=user.id, role=user.role
+    )
+
+
 @router.get("/{application_id}/identity", response_model=IdentityProfilePublic | None)
 async def get_identity(
     application_id: str,

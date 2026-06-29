@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { UploadCloud, CheckCircle2, Trash2 } from "lucide-react";
+import { UploadCloud, CheckCircle2, Trash2, AlertCircle, Circle } from "lucide-react";
 import { api } from "../api/endpoints";
 import { Button, Card, ErrorBanner, Field, Input, Select, Badge } from "../components/ui";
 
@@ -66,6 +66,36 @@ function DocGraph({ docs }) {
   );
 }
 
+// Per-loan-type required-document checklist (status comes from the backend, which is
+// the authoritative gate — this just visualizes it and drives the Submit button).
+function RequirementsCard({ reqs }) {
+  return (
+    <Card title={`Required documents · ${reqs.loan_type} loan`}>
+      <ul className="space-y-1.5 text-sm">
+        {reqs.groups.map((g) => (
+          <li key={g.key} className="flex items-center gap-2">
+            {g.ok
+              ? <CheckCircle2 size={15} className="shrink-0 text-emerald-500" />
+              : g.required
+                ? <AlertCircle size={15} className="shrink-0 text-amber-500" />
+                : <Circle size={15} className="shrink-0 text-slate-300" />}
+            <span className={g.ok ? "text-slate-700" : "text-slate-500"}>{g.label}</span>
+            {!g.required && <span className="text-xs text-slate-400">(optional)</span>}
+            {g.present.length > 0 && (
+              <span className="ml-auto text-xs text-slate-400">{g.present.join(", ")}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+      <p className={`mt-3 text-xs ${reqs.satisfied ? "text-emerald-600" : "text-amber-600"}`}>
+        {reqs.satisfied
+          ? "All required documents provided — ready to submit."
+          : `Still required: ${reqs.missing_required.join("; ")}`}
+      </p>
+    </Card>
+  );
+}
+
 export default function Apply() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -74,8 +104,13 @@ export default function Apply() {
   const [docType, setDocType] = useState("AADHAAR");
   const [file, setFile] = useState(null);
   const [uploaded, setUploaded] = useState([]);
+  const [reqs, setReqs] = useState(null);          // per-loan-type requirement status
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+
+  async function loadReqs(appId) {
+    try { setReqs(await api.requirements(appId)); } catch { /* non-fatal for UX */ }
+  }
 
   async function createApp(e) {
     e.preventDefault();
@@ -87,6 +122,7 @@ export default function Apply() {
       });
       setApp(created);
       setStep(2);
+      loadReqs(created.id);
     } catch (err) { setError(err); } finally { setBusy(false); }
   }
 
@@ -102,6 +138,7 @@ export default function Apply() {
       setUploaded((u) => [...u, doc]);
       setFile(null);
       e.target.reset();
+      loadReqs(app.id);
     } catch (err) { setError(err); } finally { setBusy(false); }
   }
 
@@ -110,6 +147,7 @@ export default function Apply() {
     try {
       await api.deleteDocument(docId);
       setUploaded((u) => u.filter((d) => d.id !== docId));
+      loadReqs(app.id);
     } catch (err) { setError(err); } finally { setBusy(false); }
   }
 
@@ -151,7 +189,9 @@ export default function Apply() {
       )}
 
       {step === 2 && (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-4">
+          {reqs && <RequirementsCard reqs={reqs} />}
+          <div className="grid gap-4 lg:grid-cols-2">
           <Card title={`Upload documents · ${app.application_number}`}>
             <form onSubmit={upload} className="space-y-4">
               <Field label="Document type">
@@ -210,9 +250,21 @@ export default function Apply() {
               </div>
             ) : <p className="text-sm text-slate-400">No documents uploaded yet.</p>}
             <div className="mt-4">
-              <Button onClick={submitApp} loading={busy} disabled={!uploaded.length}>Submit for analysis</Button>
+              <Button
+                onClick={submitApp}
+                loading={busy}
+                disabled={!uploaded.length || (reqs && !reqs.satisfied)}
+              >
+                Submit for analysis
+              </Button>
+              {reqs && !reqs.satisfied && (
+                <p className="mt-2 text-xs text-amber-600">
+                  Provide all required documents above before submitting.
+                </p>
+              )}
             </div>
           </Card>
+          </div>
         </div>
       )}
 
