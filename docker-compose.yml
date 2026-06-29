@@ -67,10 +67,10 @@ services:
       migrate: {condition: service_completed_successfully}
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
-  # Celery worker — wired in Phase 2. Enable with: docker compose --profile workers up
+  # Celery worker — consumes the analysis queue (OCR → extraction → fraud → identity →
+  # graph → risk). Runs by default; without it, uploaded documents stay QUEUED forever.
   worker:
     build: .
-    profiles: ["workers"]
     env_file: [.env]
     environment:
       DATABASE_URL: postgresql+asyncpg://trustlens:trustlens@postgres:5432/trustlens
