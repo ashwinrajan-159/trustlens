@@ -78,6 +78,20 @@ async def get_application(
     return ApplicationPublic.model_validate(app)
 
 
+@router.delete("/{application_id}", status_code=204)
+async def delete_application(
+    application_id: str,
+    request: Request,
+    user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Withdraw/archive an application (owner pre-review, or analyst); soft-delete, audited."""
+    await ApplicationService(db).delete(
+        application_id, user_id=user.id, role=user.role, ip=client_ip(request)
+    )
+    return Response(status_code=204)
+
+
 @router.get("/{application_id}/signals", response_model=list[FraudSignalPublic])
 async def list_signals(
     application_id: str,

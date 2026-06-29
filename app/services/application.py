@@ -105,6 +105,36 @@ class ApplicationService:
             await self.session.commit()
         return app
 
+    async def delete(
+        self, app_id: str, *, user_id: str, role: UserRole, ip: str | None = None
+    ) -> None:
+        """Soft-delete (withdraw/archive) an application.
+
+        A customer may remove their OWN application only before an analyst acts on it
+        (status DRAFT or SUBMITTED) — so a flagged/under-review case can't be made to
+        disappear. Analysts/admins may archive any. Soft-delete (sets ``deleted_at``)
+        so it drops out of list views while history/audit are preserved.
+        """
+        from app.models.base import _utcnow
+
+        app = await self.get_for_user(app_id, user_id=user_id, role=role)
+        if app.deleted_at is not None:
+            raise NotFoundError("Application not found")
+        if role == UserRole.CUSTOMER and app.status not in (
+            ApplicationStatus.DRAFT, ApplicationStatus.SUBMITTED,
+        ):
+            raise StateTransitionError(
+                "This application is already under review and can no longer be deleted."
+            )
+        before = app.status.value
+        app.deleted_at = _utcnow()
+        await self.audit.record(
+            action=AuditAction.DELETE, entity_type="application", entity_id=app.id,
+            actor_id=user_id, before={"status": before}, ip_address=ip,
+        )
+        await self.session.commit()
+        log.info("application.delete", application_id=app.id, status=before)
+
     def _transition(self, app: Application, target: ApplicationStatus) -> None:
         allowed = APPLICATION_TRANSITIONS.get(app.status, set())
         if target not in allowed:

@@ -16,6 +16,7 @@ export const api = {
   listApplications: (q = "") => req(`/applications${q}`),
   getApplication: (id) => req(`/applications/${id}`),
   submitApplication: (id) => req(`/applications/${id}/submit`, { method: "POST" }),
+  deleteApplication: (id) => req(`/applications/${id}`, { method: "DELETE" }),
   decide: (id, data) => req(`/applications/${id}/decision`, { method: "POST", body: data }),
   signals: (id) => req(`/applications/${id}/signals`),
   risk: (id) => req(`/applications/${id}/risk`),
