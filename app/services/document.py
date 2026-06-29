@@ -136,6 +136,44 @@ class DocumentService:
         await self._authorized_application(application_id, user_id, role)
         return await self.docs.list_for_application(application_id)
 
+    async def delete(
+        self, document_id: str, *, user_id: str, role: UserRole, ip: str | None = None
+    ) -> None:
+        """Remove a document from a still-draft application (mistake recovery).
+
+        Soft-deletes the row, best-effort removes the stored object, and audits it.
+        Only the application owner (or an analyst) may remove, and only while the
+        application is a DRAFT — once submitted, the document set is locked.
+        """
+        from app.models.base import _utcnow
+        from app.models.enums import ApplicationStatus
+
+        doc = await self.docs.get(document_id)
+        if not doc or doc.deleted_at is not None:
+            raise NotFoundError("Document not found")
+
+        app = await self._authorized_application(doc.application_id, user_id, role)
+        if app.status != ApplicationStatus.DRAFT:
+            raise ValidationError(
+                "Documents can only be removed while the application is a draft."
+            )
+
+        doc.deleted_at = _utcnow()
+        doc.is_current_version = False
+        try:
+            await self.storage.delete(doc.storage_key)
+        except Exception:  # noqa: BLE001 — object cleanup is best-effort
+            log.warning("document.delete_storage_failed", document_id=document_id)
+
+        await self.audit.record(
+            action=AuditAction.DELETE, entity_type="document", entity_id=document_id,
+            actor_id=user_id,
+            before={"document_type": doc.document_type.value, "filename": doc.original_filename},
+            ip_address=ip,
+        )
+        await self.session.commit()
+        log.info("document.deleted", document_id=document_id, application_id=doc.application_id)
+
     async def get_with_ocr(self, document_id: str, *, user_id: str, role: UserRole):
         """Return (document, current OcrResult|None) after an authorization check."""
         from sqlalchemy import select

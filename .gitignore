@@ -52,3 +52,9 @@ ds/
 
 # agent/session config
 .claude/
+
+# stray deploy artifacts / private key — never commit
+ssh gitaction key
+ssh gitaction key.pub
+*.pem
+

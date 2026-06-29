@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import hashlib
 
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -114,6 +114,22 @@ async def get_document(
             char_count=len(ocr.raw_text or ""),
         )
     return detail
+
+
+@router.delete("/documents/{document_id}", status_code=204)
+async def delete_document(
+    document_id: str,
+    request: Request,
+    user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    storage: StorageService = Depends(get_storage),
+) -> Response:
+    """Remove a wrongly-uploaded document from a draft application (owner/analyst,
+    draft-only, soft-delete, audited)."""
+    await DocumentService(db, storage).delete(
+        document_id, user_id=user.id, role=user.role, ip=client_ip(request)
+    )
+    return Response(status_code=204)
 
 
 def _entity_to_public(e) -> ExtractedEntityPublic:

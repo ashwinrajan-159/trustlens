@@ -34,6 +34,7 @@ export const api = {
   getDocument: (id) => req(`/documents/${id}`),
   documentEntities: (id) => req(`/documents/${id}/entities`),
   downloadDocument: (id) => req(`/documents/${id}/download`),
+  deleteDocument: (id) => req(`/documents/${id}`, { method: "DELETE" }),
 
   // ── alerts ──
   listAlerts: (q = "") => req(`/alerts${q}`),
