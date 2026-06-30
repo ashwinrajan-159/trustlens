@@ -77,10 +77,14 @@ services:
       STORAGE_ENDPOINT_URL: http://minio:9000
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
+      WORKER_PROCESS: "1"
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
-    command: ["celery", "-A", "app.worker.celery_app", "worker", "--loglevel=info"]
+    # -Q ocr,default: tasks route to a named ``ocr`` queue plus ``default`` (see
+    # app/worker.py task_routes); the worker MUST consume both or OCR jobs (the
+    # pipeline's first step) sit unprocessed and every document stays QUEUED.
+    command: ["celery", "-A", "app.worker.celery_app", "worker", "--loglevel=info", "-Q", "ocr,default"]
 
 volumes:
   postgres-data:

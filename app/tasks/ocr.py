@@ -112,8 +112,8 @@ async def run_ocr_pipeline_async(
                 confidence_score=out.confidence,
                 page_count=out.page_count,
                 pages_data=out.pages,
-                engine=out.engine,
-                model_version=out.model_version,
+                engine=out.engine[:64],
+                model_version=(out.model_version or "unknown")[:64],
             )
             session.add(result)
             document.status = DocumentStatus.PROCESSED

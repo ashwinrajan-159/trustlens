@@ -6,6 +6,7 @@ error and close on exit. Tests override the engine with SQLite in-memory.
 """
 from __future__ import annotations
 
+import os
 from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
@@ -13,6 +14,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.pool import NullPool
 
 from app.config import settings
 
@@ -20,6 +22,14 @@ from app.config import settings
 _engine_kwargs: dict = {"echo": settings.db_echo, "future": True}
 if not settings.database_url.startswith("sqlite"):
     _engine_kwargs["pool_pre_ping"] = True
+    # Inside the Celery worker each task runs in a fresh asyncio loop via
+    # ``asyncio.run()``. asyncpg pins each pooled connection to the loop that
+    # created it, so reusing one across tasks raises "Future attached to a
+    # different loop". NullPool opens and disposes a connection per checkout,
+    # eliminating cross-loop reuse. The API (one long-lived loop) keeps pooling.
+    if os.getenv("WORKER_PROCESS") == "1":
+        _engine_kwargs["poolclass"] = NullPool
+        _engine_kwargs.pop("pool_pre_ping", None)
 
 engine = create_async_engine(settings.database_url, **_engine_kwargs)
 

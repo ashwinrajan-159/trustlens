@@ -68,7 +68,7 @@ class PyMuPDFEngine:
 
         if "pdf" not in content_type:
             # PyMuPDF can open images too, but it won't OCR them — defer to Paddle.
-            return OcrOutput("", 0.0, 0, self.name, fitz.__doc__ or "pymupdf", [])
+            return OcrOutput("", 0.0, 0, self.name, getattr(fitz, "__version__", "pymupdf"), [])
         try:
             doc = fitz.open(stream=data, filetype="pdf")
         except Exception as exc:  # noqa: BLE001
