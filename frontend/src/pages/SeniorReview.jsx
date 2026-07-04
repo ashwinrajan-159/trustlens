@@ -18,18 +18,18 @@ export default function SeniorReview() {
 
   return (
     <div className="space-y-4">
-      <h1 className="flex items-center gap-2 text-2xl font-semibold text-slate-800"><Gavel size={22} /> Senior review queue</h1>
+      <h1 className="flex items-center gap-2 text-2xl font-semibold text-stone-800"><Gavel size={22} /> Senior review queue</h1>
       <ErrorBanner error={error} />
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title={`Awaiting review (${queue?.length || 0})`}>
           {loading ? <Spinner /> : queue?.length ? (
             <table className="w-full text-sm">
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-stone-900/10">
                 {queue.map((a) => (
-                  <tr key={a.id} className={`cursor-pointer hover:bg-slate-50 ${selected?.id === a.id ? "bg-brand-50" : ""}`} onClick={() => setSelected(a)}>
-                    <td className="py-2 font-mono text-xs text-slate-500">{a.alert_number}</td>
+                  <tr key={a.id} className={`cursor-pointer hover:bg-stone-900/5 ${selected?.id === a.id ? "bg-brand-100/80" : ""}`} onClick={() => setSelected(a)}>
+                    <td className="py-2 font-mono text-xs text-stone-500">{a.alert_number}</td>
                     <td><Badge className={sevStyle(a.severity)}>{a.severity}</Badge></td>
-                    <td className="text-xs text-slate-400">{dt(a.created_at)}</td>
+                    <td className="text-xs text-stone-400">{dt(a.created_at)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -68,14 +68,14 @@ function ReviewPanel({ alert, onDone }) {
   }
 
   return (
-    <Card title={`Review · ${alert.alert_number}`} action={<Link to={`/app/applications/${alert.application_id}`} className="text-xs text-brand-600">Application</Link>}>
+    <Card title={`Review · ${alert.alert_number}`} action={<Link to={`/app/applications/${alert.application_id}`} className="text-xs text-brand-700">Application</Link>}>
       {loading ? <Spinner /> : !report ? <EmptyState message="No investigation report on this alert." /> : (
         <div className="space-y-3">
-          <div className="rounded-lg bg-slate-50 p-3 text-sm">
-            <Badge className="bg-slate-200 text-slate-700">{report.recommendation}</Badge>
-            <p className="mt-2 text-slate-600">{report.investigation_summary}</p>
-            {report.findings && <p className="mt-1 text-xs text-slate-500">{report.findings}</p>}
-            <p className="mt-1 text-xs text-slate-400">Investigator {report.underwriter_id?.slice(0, 8)}… · {dt(report.created_at)}</p>
+          <div className="rounded-lg bg-stone-900/[0.03] p-3 text-sm">
+            <Badge className="bg-stone-900/5 text-stone-700">{report.recommendation}</Badge>
+            <p className="mt-2 text-stone-600">{report.investigation_summary}</p>
+            {report.findings && <p className="mt-1 text-xs text-stone-500">{report.findings}</p>}
+            <p className="mt-1 text-xs text-stone-400">Investigator {report.underwriter_id?.slice(0, 8)}… · {dt(report.created_at)}</p>
           </div>
 
           <ErrorBanner error={err} />

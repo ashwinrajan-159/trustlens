@@ -38,7 +38,7 @@ export default function Applications() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-slate-800">Applications</h1>
+        <h1 className="text-2xl font-semibold text-stone-800">Applications</h1>
         {!isAnalyst && <Link to="/app/apply"><Button>+ New application</Button></Link>}
       </div>
 
@@ -57,26 +57,26 @@ export default function Applications() {
         {loading ? <Spinner /> : items.length ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="text-left text-xs uppercase text-slate-400">
+              <thead className="text-left text-xs uppercase text-stone-400">
                 <tr>
                   <th className="py-2">Number</th><th>Type</th><th>Amount</th>
                   <th>Status</th><th>Risk</th><th>Submitted</th><th></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-stone-900/10">
                 {items.map((a) => {
                   const canDelete = isAnalyst || CUSTOMER_DELETABLE.includes(a.status);
                   return (
-                    <tr key={a.id} className="hover:bg-slate-50">
-                      <td className="py-2 font-mono text-xs text-slate-500">{a.application_number}</td>
+                    <tr key={a.id} className="hover:bg-stone-900/5">
+                      <td className="py-2 font-mono text-xs text-stone-500">{a.application_number}</td>
                       <td>{a.loan_type}</td>
                       <td>{inr(a.loan_amount_requested)}</td>
                       <td><Badge className={statusStyle(a.status)}>{a.status}</Badge></td>
-                      <td>{a.risk_tier ? <Badge className={tierStyle(a.risk_tier)}>{a.risk_tier} · {a.current_risk_score ?? "—"}</Badge> : <span className="text-slate-300">—</span>}</td>
-                      <td className="text-xs text-slate-400">{dt(a.submitted_at)}</td>
+                      <td>{a.risk_tier ? <Badge className={tierStyle(a.risk_tier)}>{a.risk_tier} · {a.current_risk_score ?? "—"}</Badge> : <span className="text-stone-300">—</span>}</td>
+                      <td className="text-xs text-stone-400">{dt(a.submitted_at)}</td>
                       <td className="text-right whitespace-nowrap">
-                        <Link to={`/app/applications/${a.id}`} className="text-xs font-medium text-brand-600">View</Link>
-                        {isAnalyst && <Link to={`/app/review/${a.id}`} className="ml-3 text-xs font-medium text-brand-600">Review</Link>}
+                        <Link to={`/app/applications/${a.id}`} className="text-xs font-medium text-brand-700">View</Link>
+                        {isAnalyst && <Link to={`/app/review/${a.id}`} className="ml-3 text-xs font-medium text-brand-700">Review</Link>}
                         {canDelete && (
                           <button
                             type="button"
@@ -84,7 +84,7 @@ export default function Applications() {
                             disabled={busyId === a.id}
                             title={isAnalyst ? "Archive application" : "Delete application"}
                             aria-label={`Delete ${a.application_number}`}
-                            className="ml-3 inline-flex items-center align-middle text-slate-400 transition-colors hover:text-red-600 disabled:opacity-50"
+                            className="ml-3 inline-flex items-center align-middle text-stone-400 transition-colors hover:text-red-600 disabled:opacity-50"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -99,7 +99,7 @@ export default function Applications() {
         ) : <EmptyState message="No applications match these filters." />}
       </Card>
 
-      <div className="flex items-center justify-between text-sm text-slate-500">
+      <div className="flex items-center justify-between text-sm text-stone-500">
         <span>Page {page} of {pages} · {data?.total ?? 0} total</span>
         <div className="flex gap-2">
           <Button variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</Button>

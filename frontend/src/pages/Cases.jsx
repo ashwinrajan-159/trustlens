@@ -29,7 +29,7 @@ export default function Cases() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold text-slate-800">Investigation cases</h1>
+      <h1 className="text-2xl font-semibold text-stone-800">Investigation cases</h1>
       <ErrorBanner error={error || err} />
 
       <Card title="Open a case">
@@ -48,18 +48,18 @@ export default function Cases() {
       <Card>
         {loading ? <Spinner /> : data?.length ? (
           <table className="w-full text-sm">
-            <thead className="text-left text-xs uppercase text-slate-400"><tr><th className="py-2">Case</th><th>Type</th><th>Priority</th><th>Status</th><th>Summary</th><th></th></tr></thead>
-            <tbody className="divide-y divide-slate-100">
+            <thead className="text-left text-xs uppercase text-stone-400"><tr><th className="py-2">Case</th><th>Type</th><th>Priority</th><th>Status</th><th>Summary</th><th></th></tr></thead>
+            <tbody className="divide-y divide-stone-900/10">
               {data.map((c) => (
                 <tr key={c.id}>
-                  <td className="py-2 font-mono text-xs text-slate-500">{c.case_number}</td>
+                  <td className="py-2 font-mono text-xs text-stone-500">{c.case_number}</td>
                   <td className="text-xs">{c.case_type}</td>
                   <td className="text-xs">{c.priority}</td>
                   <td><Badge className={statusStyle(c.status)}>{c.status}</Badge></td>
-                  <td className="max-w-xs truncate text-slate-600">{c.summary}</td>
+                  <td className="max-w-xs truncate text-stone-600">{c.summary}</td>
                   <td className="text-right text-xs">
                     {isSenior && c.status !== "CLOSED" && <button className="text-emerald-600" onClick={() => close(c.id)}>Close</button>}
-                    {c.closed_outcome && <span className="text-slate-400">{c.closed_outcome}</span>}
+                    {c.closed_outcome && <span className="text-stone-400">{c.closed_outcome}</span>}
                   </td>
                 </tr>
               ))}

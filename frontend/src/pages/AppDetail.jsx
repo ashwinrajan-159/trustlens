@@ -15,8 +15,8 @@ function RiskPanel({ id }) {
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard label="Risk score" value={risk ? risk.total_score : "—"} />
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs uppercase tracking-wide text-slate-400">Risk tier</div>
+        <div className="glass p-4">
+          <div className="text-xs uppercase tracking-wide text-stone-400">Risk tier</div>
           <div className="mt-2">{risk ? <Badge className={tierStyle(risk.risk_tier)}>{risk.risk_tier}</Badge> : "—"}</div>
         </div>
         <StatCard label="Documents complete" value={comp ? (comp.is_complete ? "Yes" : "No") : "—"}
@@ -25,12 +25,12 @@ function RiskPanel({ id }) {
       <Card title="Score breakdown (explainable)">
         {risk?.reasons?.length ? (
           <table className="w-full text-sm">
-            <thead className="text-left text-xs uppercase text-slate-400"><tr><th className="py-1">Rule</th><th>Signal</th><th>Category</th><th>Severity</th><th>Weight</th></tr></thead>
-            <tbody className="divide-y divide-slate-100">
+            <thead className="text-left text-xs uppercase text-stone-400"><tr><th className="py-1">Rule</th><th>Signal</th><th>Category</th><th>Severity</th><th>Weight</th></tr></thead>
+            <tbody className="divide-y divide-stone-900/10">
               {risk.reasons.map((r, i) => (
                 <tr key={i}>
-                  <td className="py-1 text-slate-600">{r.rule_name}</td>
-                  <td className="text-xs text-slate-500">{r.signal_type}</td>
+                  <td className="py-1 text-stone-600">{r.rule_name}</td>
+                  <td className="text-xs text-stone-500">{r.signal_type}</td>
                   <td className="text-xs">{r.category}</td>
                   <td><Badge className={sevStyle(r.severity)}>{r.severity}</Badge></td>
                   <td>{r.weight}</td>
@@ -51,16 +51,16 @@ function SignalsPanel({ id }) {
   return (
     <div className="space-y-2">
       {data.map((s) => (
-        <div key={s.id} className="rounded-lg border border-slate-200 bg-white p-3">
+        <div key={s.id} className="glass p-3">
           <div className="flex items-center justify-between">
-            <span className="font-medium text-slate-700">{s.signal_type}</span>
+            <span className="font-medium text-stone-700">{s.signal_type}</span>
             <div className="flex gap-2">
-              <Badge className="bg-slate-100 text-slate-500">{s.signal_scope}</Badge>
+              <Badge className="bg-stone-900/5 text-stone-500">{s.signal_scope}</Badge>
               <Badge className={sevStyle(s.severity)}>{s.severity}</Badge>
             </div>
           </div>
-          <p className="mt-1 text-sm text-slate-500">{s.description}</p>
-          <div className="mt-1 text-xs text-slate-400">{s.rule_name} · confidence {s.confidence}</div>
+          <p className="mt-1 text-sm text-stone-500">{s.description}</p>
+          <div className="mt-1 text-xs text-stone-400">{s.rule_name} · confidence {s.confidence}</div>
         </div>
       ))}
     </div>
@@ -72,8 +72,8 @@ function KeyVals({ obj, fields }) {
     <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
       {fields.map(([key, label, fmt]) => (
         <div key={key} className="contents">
-          <dt className="text-slate-400">{label}</dt>
-          <dd className="text-slate-700">{obj[key] == null ? "—" : fmt ? fmt(obj[key]) : String(obj[key])}</dd>
+          <dt className="text-stone-400">{label}</dt>
+          <dd className="text-stone-700">{obj[key] == null ? "—" : fmt ? fmt(obj[key]) : String(obj[key])}</dd>
         </div>
       ))}
     </dl>
@@ -144,24 +144,24 @@ function DocumentsPanel({ id }) {
     <div className="space-y-3">
       <ErrorBanner error={error} />
       {data?.length ? data.map((d) => (
-        <div key={d.id} className="rounded-lg border border-slate-200 bg-white p-3">
+        <div key={d.id} className="glass p-3">
           <div className="flex items-center justify-between">
-            <span className="font-medium text-slate-700">{d.document_type}</span>
+            <span className="font-medium text-stone-700">{d.document_type}</span>
             <div className="flex items-center gap-2">
               <Badge className={statusStyle(d.status)}>{d.status}</Badge>
               <Button variant="ghost" onClick={() => download(d.id)}><Download size={14} /></Button>
             </div>
           </div>
-          <div className="mt-1 text-xs text-slate-400">{d.original_filename} · v{d.version}</div>
+          <div className="mt-1 text-xs text-stone-400">{d.original_filename} · v{d.version}</div>
           <div className="mt-2">
-            <button onClick={() => loadEntities(d.id)} className="text-xs font-medium text-brand-600">Show extracted fields</button>
+            <button onClick={() => loadEntities(d.id)} className="text-xs font-medium text-brand-700">Show extracted fields</button>
             {entities[d.id] && (
               <div className="mt-2 flex flex-wrap gap-2">
                 {entities[d.id].length ? entities[d.id].map((e) => (
-                  <span key={e.id} className="rounded bg-slate-100 px-2 py-1 text-xs">
+                  <span key={e.id} className="rounded bg-stone-900/5 px-2 py-1 text-xs">
                     <b>{e.entity_type}:</b> {e.value ?? "—"}{e.is_sensitive ? " 🔒" : ""}
                   </span>
-                )) : <span className="text-xs text-slate-400">No fields extracted.</span>}
+                )) : <span className="text-xs text-stone-400">No fields extracted.</span>}
               </div>
             )}
           </div>
@@ -193,8 +193,8 @@ export default function AppDetail() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-mono text-lg text-slate-700">{app.application_number}</h1>
-          <p className="text-sm text-slate-500">{app.loan_type} · {inr(app.loan_amount_requested)} · created {dt(app.created_at)}</p>
+          <h1 className="font-mono text-lg text-stone-700">{app.application_number}</h1>
+          <p className="text-sm text-stone-500">{app.loan_type} · {inr(app.loan_amount_requested)} · created {dt(app.created_at)}</p>
         </div>
         <div className="flex items-center gap-2">
           <Badge className={statusStyle(app.status)}>{app.status}</Badge>

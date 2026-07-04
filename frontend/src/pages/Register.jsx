@@ -23,20 +23,20 @@ export default function Register() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+    <div className="flex min-h-screen items-center justify-center px-4">
+      <form onSubmit={submit} className="glass w-full max-w-sm space-y-4 p-8">
         <div className="flex items-center gap-2 text-brand-700"><ShieldCheck size={22} /><span className="text-lg font-bold">TrustLens</span></div>
-        <h1 className="text-xl font-semibold text-slate-800">Create account</h1>
+        <h1 className="text-xl font-semibold text-stone-800">Create account</h1>
         <ErrorBanner error={error} />
         <Field label="Full name"><Input required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></Field>
         <Field label="Email"><Input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
         <Field label="Password" hint="Minimum 8 characters"><Input type="password" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></Field>
-        <label className="flex items-center gap-2 text-sm text-slate-600">
+        <label className="flex items-center gap-2 text-sm text-stone-600">
           <input type="checkbox" checked={form.data_consent_given} onChange={(e) => setForm({ ...form, data_consent_given: e.target.checked })} />
           I consent to processing my data (DPDP Act 2023)
         </label>
         <Button type="submit" loading={loading} className="w-full" disabled={!form.data_consent_given}>Create account</Button>
-        <p className="text-center text-sm text-slate-500">Have an account? <Link to="/login" className="font-medium text-brand-600">Sign in</Link></p>
+        <p className="text-center text-sm text-stone-500">Have an account? <Link to="/login" className="font-medium text-brand-700">Sign in</Link></p>
       </form>
     </div>
   );

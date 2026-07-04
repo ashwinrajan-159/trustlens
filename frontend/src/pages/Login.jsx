@@ -29,16 +29,19 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="flex items-center gap-2 text-brand-700"><ShieldCheck size={22} /><span className="text-lg font-bold">TrustLens</span></div>
-        <h1 className="text-xl font-semibold text-slate-800">Sign in</h1>
+    <div className="flex min-h-screen items-center justify-center px-4">
+      <form onSubmit={submit} className="glass w-full max-w-sm space-y-4 p-8">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-ink text-white shadow-sm"><ShieldCheck size={20} /></span>
+          <span className="text-lg font-bold text-stone-800">TrustLens</span>
+        </div>
+        <h1 className="text-xl font-semibold text-stone-800">Sign in</h1>
         <ErrorBanner error={error} />
         <Field label="Email"><Input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
         <Field label="Password"><Input type="password" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></Field>
         {needMfa && <Field label="MFA code" hint="Required for analyst accounts with MFA enabled"><Input value={form.mfa_code} onChange={(e) => setForm({ ...form, mfa_code: e.target.value })} /></Field>}
         <Button type="submit" loading={loading} className="w-full">Sign in</Button>
-        <p className="text-center text-sm text-slate-500">No account? <Link to="/register" className="font-medium text-brand-600">Register</Link></p>
+        <p className="text-center text-sm text-stone-500">No account? <Link to="/register" className="font-medium text-brand-700 hover:text-brand-800">Register</Link></p>
       </form>
     </div>
   );

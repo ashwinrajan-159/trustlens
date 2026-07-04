@@ -18,7 +18,7 @@ export default function Operations() {
   if (loading) return <Spinner />;
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-semibold text-slate-800">Operations</h1>
+      <h1 className="text-2xl font-semibold text-stone-800">Operations</h1>
       <ErrorBanner error={error} />
       <div className="grid gap-4 sm:grid-cols-5">
         <StatCard label="Applications" value={ov?.applications_total ?? 0} />
@@ -34,8 +34,8 @@ export default function Operations() {
             <ul className="space-y-2 text-sm">
               {threats.map((a) => (
                 <li key={a.id} className="flex items-center justify-between">
-                  <span className="font-mono text-xs text-slate-500">{a.alert_number}</span>
-                  <span className="text-slate-600">{a.alert_type}</span>
+                  <span className="font-mono text-xs text-stone-500">{a.alert_number}</span>
+                  <span className="text-stone-600">{a.alert_type}</span>
                   <Badge className={sevStyle(a.severity)}>{a.severity}</Badge>
                 </li>
               ))}
@@ -48,10 +48,10 @@ export default function Operations() {
             <ul className="max-h-72 space-y-1 overflow-y-auto text-sm">
               {events.items.map((e) => (
                 <li key={e.id} className="flex items-center justify-between">
-                  <span className="text-slate-600">{e.event_type}</span>
+                  <span className="text-stone-600">{e.event_type}</span>
                   <span className="flex items-center gap-2">
                     <Badge className={e.status === "SENT" ? "bg-emerald-100 text-emerald-700" : e.status === "FAILED" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}>{e.status}</Badge>
-                    <span className="text-xs text-slate-400">{dt(e.created_at)}</span>
+                    <span className="text-xs text-stone-400">{dt(e.created_at)}</span>
                   </span>
                 </li>
               ))}

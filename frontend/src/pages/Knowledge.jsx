@@ -15,7 +15,7 @@ const pct = (x) => `${(x * 100).toFixed(1)}%`;
 export default function Knowledge() {
   return (
     <div className="space-y-5">
-      <h1 className="flex items-center gap-2 text-2xl font-semibold text-slate-800"><BookOpen size={22} /> Fraud knowledge</h1>
+      <h1 className="flex items-center gap-2 text-2xl font-semibold text-stone-800"><BookOpen size={22} /> Fraud knowledge</h1>
       <SignalAnalytics />
       <Patterns />
       <WeightGovernance />
@@ -30,15 +30,15 @@ function SignalAnalytics() {
       <ErrorBanner error={error} />
       {loading ? <Spinner /> : data?.length ? (
         <table className="w-full text-sm">
-          <thead className="text-left text-xs uppercase text-slate-400"><tr><th className="py-2">Signal</th><th>Confirmed</th><th>FP</th><th>Precision</th><th>95% CI</th><th>Actionable</th></tr></thead>
-          <tbody className="divide-y divide-slate-100">
+          <thead className="text-left text-xs uppercase text-stone-400"><tr><th className="py-2">Signal</th><th>Confirmed</th><th>FP</th><th>Precision</th><th>95% CI</th><th>Actionable</th></tr></thead>
+          <tbody className="divide-y divide-stone-900/10">
             {data.map((s) => (
               <tr key={s.signal_name}>
-                <td className="py-2 text-xs text-slate-600">{s.signal_name}</td>
+                <td className="py-2 text-xs text-stone-600">{s.signal_name}</td>
                 <td className="text-emerald-600">{s.confirmed_fraud_count}</td>
                 <td className="text-red-600">{s.false_positive_count}</td>
                 <td className="font-medium">{pct(s.precision_score)}</td>
-                <td className="text-xs text-slate-400">{pct(s.precision_ci_low)}–{pct(s.precision_ci_high)}</td>
+                <td className="text-xs text-stone-400">{pct(s.precision_ci_low)}–{pct(s.precision_ci_high)}</td>
                 <td>{s.sample_sufficient ? <Badge className="bg-emerald-100 text-emerald-700">yes</Badge> : <Badge className="bg-amber-100 text-amber-700">low n</Badge>}</td>
               </tr>
             ))}
@@ -68,13 +68,13 @@ function Patterns() {
       {loading ? <Spinner /> : data?.length ? (
         <div className="space-y-2">
           {data.map((p) => (
-            <div key={p.id} className="rounded-lg bg-slate-50 px-3 py-2">
+            <div key={p.id} className="rounded-lg bg-stone-900/[0.03] px-3 py-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-slate-700">{p.name}</span>
+                <span className="text-sm font-medium text-stone-700">{p.name}</span>
                 <Badge className="bg-brand-100 text-brand-700">conf {pct(p.pattern_confidence)}</Badge>
               </div>
-              <div className="mt-1 text-xs text-slate-500">{p.description}</div>
-              <div className="mt-1 text-xs text-slate-400">
+              <div className="mt-1 text-xs text-stone-500">{p.description}</div>
+              <div className="mt-1 text-xs text-stone-400">
                 {p.occurrences} cases · {p.confirmed_cases} confirmed · {p.false_positive_count} FP
                 <span className="ml-2 font-mono">{p.id.slice(0, 8)}</span>
               </div>
@@ -84,7 +84,7 @@ function Patterns() {
       ) : <EmptyState message="No patterns learned yet." />}
 
       {isAdmin && data?.length > 1 && (
-        <div className="mt-4 flex items-end gap-2 border-t border-slate-100 pt-3">
+        <div className="mt-4 flex items-end gap-2 border-t border-stone-900/10 pt-3">
           <Field label="Merge source id"><Input value={merge.source_id} onChange={(e) => setMerge({ ...merge, source_id: e.target.value })} placeholder="duplicate" /></Field>
           <Field label="into target id"><Input value={merge.target_id} onChange={(e) => setMerge({ ...merge, target_id: e.target.value })} placeholder="keep" /></Field>
           <Button variant="secondary" loading={busy} disabled={!merge.source_id || !merge.target_id} onClick={doMerge}>Merge</Button>
@@ -116,21 +116,21 @@ function WeightGovernance() {
     try { await api.activateWeights(id); await reload(); } catch (e) { setErr(e); } finally { setBusy(false); }
   }
 
-  const statusStyles = { ACTIVE: "bg-emerald-100 text-emerald-700", PROPOSED: "bg-amber-100 text-amber-700", RETIRED: "bg-slate-200 text-slate-500", DRAFT: "bg-slate-100 text-slate-500" };
+  const statusStyles = { ACTIVE: "bg-emerald-100 text-emerald-700", PROPOSED: "bg-amber-100 text-amber-700", RETIRED: "bg-stone-900/10 text-stone-500", DRAFT: "bg-stone-900/5 text-stone-500" };
 
   return (
     <Card title={<span className="flex items-center gap-2"><SlidersHorizontal size={16} /> Signal-weight governance</span>}>
       <ErrorBanner error={error || err} />
       {loading ? <Spinner /> : data?.length ? (
         <table className="w-full text-sm">
-          <thead className="text-left text-xs uppercase text-slate-400"><tr><th className="py-2">Version</th><th>Status</th><th>Rationale</th><th>Activated</th><th></th></tr></thead>
-          <tbody className="divide-y divide-slate-100">
+          <thead className="text-left text-xs uppercase text-stone-400"><tr><th className="py-2">Version</th><th>Status</th><th>Rationale</th><th>Activated</th><th></th></tr></thead>
+          <tbody className="divide-y divide-stone-900/10">
             {data.map((w) => (
               <tr key={w.id}>
                 <td className="py-2">v{w.version}</td>
                 <td><Badge className={statusStyles[w.status] || ""}>{w.status}</Badge></td>
-                <td className="text-xs text-slate-500">{w.rationale}</td>
-                <td className="text-xs text-slate-400">{dt(w.activated_at)}</td>
+                <td className="text-xs text-stone-500">{w.rationale}</td>
+                <td className="text-xs text-stone-400">{dt(w.activated_at)}</td>
                 <td className="text-right">{isAdmin && w.status === "PROPOSED" && (
                   <Button variant="secondary" loading={busy} onClick={() => activate(w.id)}>Activate</Button>
                 )}</td>
@@ -141,13 +141,13 @@ function WeightGovernance() {
       ) : <EmptyState message="No weight configs — the engine uses built-in severity defaults." />}
 
       {isSenior && (
-        <div className="mt-4 space-y-2 border-t border-slate-100 pt-3">
+        <div className="mt-4 space-y-2 border-t border-stone-900/10 pt-3">
           <Field label="Propose weights (JSON {signal_type: weight})">
             <Textarea rows={2} value={raw} onChange={(e) => setRaw(e.target.value)} placeholder='{"INVALID_PAN_FORMAT": 40, "ROUND_NUMBER_SALARY": 8}' />
           </Field>
           <Field label="Rationale"><Input value={rationale} onChange={(e) => setRationale(e.target.value)} placeholder="Why these weights (audit trail)" /></Field>
           <Button variant="primary" loading={busy} disabled={!raw.trim() || !rationale.trim()} onClick={propose}>Propose</Button>
-          <p className="text-xs text-slate-400">An ADMIN who is not the proposer must activate (segregation of duties).</p>
+          <p className="text-xs text-stone-400">An ADMIN who is not the proposer must activate (segregation of duties).</p>
         </div>
       )}
     </Card>

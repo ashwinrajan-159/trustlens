@@ -45,44 +45,58 @@ export default function Layout() {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
-        <div className="flex items-center gap-2 px-4 py-4 text-brand-700">
-          <ShieldCheck size={22} />
-          <span className="text-lg font-bold">TrustLens</span>
+      <aside className="m-3 mr-0 flex w-60 shrink-0 flex-col self-stretch rounded-2xl border border-white/60 bg-white/45 shadow-glass backdrop-blur-xl">
+        <div className="flex items-center gap-2.5 px-4 py-4">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-ink text-white shadow-sm">
+            <ShieldCheck size={20} />
+          </span>
+          <div className="leading-tight">
+            <div className="text-lg font-bold text-stone-800">TrustLens</div>
+            <div className="text-[10px] font-medium uppercase tracking-wider text-stone-400">Fraud Intelligence</div>
+          </div>
         </div>
-        <nav className="flex-1 space-y-1 px-2">
+        <nav className="flex-1 space-y-1 px-2 pt-2">
           {nav.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
               className={({ isActive }) =>
-                `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
-                  isActive ? "bg-brand-50 text-brand-700" : "text-slate-600 hover:bg-slate-100"
+                `group flex items-center gap-3 rounded-full px-3.5 py-2 text-sm font-medium transition ${
+                  isActive
+                    ? "bg-ink text-white shadow-sm"
+                    : "text-stone-600 hover:bg-stone-900/5 hover:text-stone-900"
                 }`
               }
             >
-              <Icon size={17} /> {label}
+              {({ isActive }) => (
+                <>
+                  <Icon size={17} className={isActive ? "text-brand-300" : "text-stone-400 group-hover:text-stone-600"} />
+                  {label}
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
-        <div className="border-t border-slate-100 p-3">
-          <NavLink to="/app/account" className="mb-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100">
-            <UserCircle2 size={17} />
+        <div className="border-t border-stone-900/5 p-3">
+          <NavLink to="/app/account" className="mb-1 flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-stone-600 transition hover:bg-stone-900/5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-800">
+              <UserCircle2 size={18} />
+            </span>
             <div className="truncate">
               <div className="truncate font-medium">{user?.full_name || user?.email}</div>
-              <div className="text-xs text-slate-400">{role}</div>
+              <div className="text-xs text-stone-400">{role}</div>
             </div>
           </NavLink>
           <button
             onClick={async () => { await logout(); navigate("/login"); }}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-500 hover:bg-slate-100"
+            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-stone-500 transition hover:bg-red-50 hover:text-red-600"
           >
             <LogOut size={17} /> Sign out
           </button>
         </div>
       </aside>
       <main className="flex-1 overflow-x-hidden">
-        <div className="mx-auto max-w-6xl px-6 py-6">
+        <div className="page-enter mx-auto max-w-6xl px-6 py-6">
           <Outlet />
         </div>
       </main>

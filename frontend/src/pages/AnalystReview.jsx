@@ -50,8 +50,8 @@ export default function AnalystReview() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-mono text-lg text-slate-700">{app.application_number}</h1>
-          <p className="text-sm text-slate-500">{app.loan_type} · {inr(app.loan_amount_requested)}</p>
+          <h1 className="font-mono text-lg text-stone-700">{app.application_number}</h1>
+          <p className="text-sm text-stone-500">{app.loan_type} · {inr(app.loan_amount_requested)}</p>
         </div>
         <div className="flex items-center gap-2">
           <Badge className={statusStyle(app.status)}>{app.status}</Badge>
@@ -72,10 +72,10 @@ export default function AnalystReview() {
             {signals?.length ? (
               <div className="space-y-2">
                 {signals.map((s) => (
-                  <div key={s.id} className="flex items-start justify-between rounded-lg bg-slate-50 px-3 py-2">
+                  <div key={s.id} className="flex items-start justify-between rounded-lg bg-stone-900/[0.03] px-3 py-2">
                     <div>
-                      <div className="text-sm font-medium text-slate-700">{s.signal_type} <span className="text-xs text-slate-400">· {s.signal_scope}</span></div>
-                      <div className="text-xs text-slate-500">{s.description}</div>
+                      <div className="text-sm font-medium text-stone-700">{s.signal_type} <span className="text-xs text-stone-400">· {s.signal_scope}</span></div>
+                      <div className="text-xs text-stone-500">{s.description}</div>
                     </div>
                     <Badge className={sevStyle(s.severity)}>{s.severity}</Badge>
                   </div>
@@ -88,7 +88,7 @@ export default function AnalystReview() {
             {risk?.reasons?.length ? (
               <ul className="space-y-1 text-sm">
                 {risk.reasons.map((r, i) => (
-                  <li key={i} className="flex justify-between"><span className="text-slate-600">{r.signal_type}</span><span className="text-slate-400">{r.category} · +{r.weight}</span></li>
+                  <li key={i} className="flex justify-between"><span className="text-stone-600">{r.signal_type}</span><span className="text-stone-400">{r.category} · +{r.weight}</span></li>
                 ))}
               </ul>
             ) : <EmptyState message="No assessment yet." />}
@@ -100,10 +100,10 @@ export default function AnalystReview() {
             {identity ? (
               <div className="space-y-1 text-sm">
                 <div>{identity.resolved_name_masked || "—"}</div>
-                <div className="text-slate-400">PAN {identity.pan_masked || "—"}</div>
+                <div className="text-stone-400">PAN {identity.pan_masked || "—"}</div>
                 {identity.is_synthetic_suspected && <Badge className="bg-red-100 text-red-700">⚠ Synthetic suspected</Badge>}
               </div>
-            ) : <span className="text-sm text-slate-400">No identity profile.</span>}
+            ) : <span className="text-sm text-stone-400">No identity profile.</span>}
           </Card>
 
           <Card title="ML second opinion" action={<Button variant="ghost" onClick={runMl}><Brain size={14} /> Predict</Button>}>
@@ -112,19 +112,19 @@ export default function AnalystReview() {
                 <div>Fraud probability: <b>{(ml.fraud_probability * 100).toFixed(1)}%</b></div>
                 <Badge className={tierStyle(ml.risk_tier)}>{ml.risk_tier}</Badge>
                 {ml.shap_top?.length ? (
-                  <ul className="mt-1 text-xs text-slate-500">
+                  <ul className="mt-1 text-xs text-stone-500">
                     {ml.shap_top.slice(0, 4).map((c) => <li key={c.feature}>{c.feature}: {c.contribution}</li>)}
                   </ul>
                 ) : null}
               </div>
-            ) : <span className="text-xs text-slate-400">Run the champion model for an advisory probability (needs a deployed model).</span>}
+            ) : <span className="text-xs text-stone-400">Run the champion model for an advisory probability (needs a deployed model).</span>}
           </Card>
 
           <Card title="Decision">
             {decided ? (
               <div className="text-sm">
                 <Badge className={statusStyle(app.status)}>{app.status}</Badge>
-                {app.decision_reason && <p className="mt-2 text-slate-500">{app.decision_reason}</p>}
+                {app.decision_reason && <p className="mt-2 text-stone-500">{app.decision_reason}</p>}
               </div>
             ) : (
               <div className="space-y-3">

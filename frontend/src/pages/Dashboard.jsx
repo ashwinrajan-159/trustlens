@@ -13,10 +13,10 @@ function TierBars({ byTier }) {
       {tiers.map((t) => (
         <div key={t} className="flex items-center gap-2">
           <span className="w-20"><Badge className={tierStyle(t)}>{t}</Badge></span>
-          <div className="h-3 flex-1 overflow-hidden rounded bg-slate-100">
+          <div className="h-3 flex-1 overflow-hidden rounded bg-stone-900/5">
             <div className="h-full bg-brand-500" style={{ width: `${((byTier[t] || 0) / max) * 100}%` }} />
           </div>
-          <span className="w-8 text-right text-sm text-slate-500">{byTier[t] || 0}</span>
+          <span className="w-8 text-right text-sm text-stone-500">{byTier[t] || 0}</span>
         </div>
       ))}
     </div>
@@ -40,13 +40,13 @@ function AnalystDashboard() {
         <Card title="Risk tier distribution">
           <TierBars byTier={ov?.applications_by_tier || {}} />
         </Card>
-        <Card title="Active threats" action={<Link to="/app/alerts" className="text-xs font-medium text-brand-600">View all</Link>}>
+        <Card title="Active threats" action={<Link to="/app/alerts" className="text-xs font-medium text-brand-700">View all</Link>}>
           {threats?.length ? (
             <ul className="space-y-2">
               {threats.slice(0, 6).map((a) => (
                 <li key={a.id} className="flex items-center justify-between text-sm">
-                  <span className="font-mono text-xs text-slate-500">{a.alert_number}</span>
-                  <span className="truncate px-2 text-slate-600">{a.alert_type}</span>
+                  <span className="font-mono text-xs text-stone-500">{a.alert_number}</span>
+                  <span className="truncate px-2 text-stone-600">{a.alert_type}</span>
                   <Badge className={sevStyle(a.severity)}>{a.severity}</Badge>
                 </li>
               ))}
@@ -72,13 +72,13 @@ function CustomerDashboard() {
         <StatCard label="Approved" value={byStatus.APPROVED || 0} />
         <StatCard label="Rejected" value={byStatus.REJECTED || 0} />
       </div>
-      <Card title="Recent applications" action={<Link to="/app/apply" className="text-xs font-medium text-brand-600">+ New</Link>}>
+      <Card title="Recent applications" action={<Link to="/app/apply" className="text-xs font-medium text-brand-700">+ New</Link>}>
         {items.length ? (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-stone-900/10">
             {items.slice(0, 8).map((a) => (
-              <Link key={a.id} to={`/app/applications/${a.id}`} className="flex items-center justify-between py-2 text-sm hover:bg-slate-50">
-                <span className="font-mono text-xs text-slate-500">{a.application_number}</span>
-                <span className="text-slate-600">{a.loan_type} · {inr(a.loan_amount_requested)}</span>
+              <Link key={a.id} to={`/app/applications/${a.id}`} className="flex items-center justify-between py-2 text-sm hover:bg-stone-900/5">
+                <span className="font-mono text-xs text-stone-500">{a.application_number}</span>
+                <span className="text-stone-600">{a.loan_type} · {inr(a.loan_amount_requested)}</span>
                 <Badge className={statusStyle(a.status)}>{a.status}</Badge>
               </Link>
             ))}
@@ -94,8 +94,8 @@ export default function Dashboard() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-800">Welcome, {user?.full_name?.split(" ")[0] || "there"}</h1>
-        <p className="text-sm text-slate-500">{isAnalyst ? "Fraud operations overview" : "Your loan applications"}</p>
+        <h1 className="text-2xl font-semibold text-stone-800">Welcome, {user?.full_name?.split(" ")[0] || "there"}</h1>
+        <p className="text-sm text-stone-500">{isAnalyst ? "Fraud operations overview" : "Your loan applications"}</p>
       </div>
       {isAnalyst ? <AnalystDashboard /> : <CustomerDashboard />}
     </div>

@@ -49,8 +49,8 @@ export default function Investigation() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-800"><Search size={20} /> Investigation</h1>
-          <p className="font-mono text-xs text-slate-500">{alert.alert_number} · {alert.alert_type}</p>
+          <h1 className="flex items-center gap-2 text-xl font-semibold text-stone-800"><Search size={20} /> Investigation</h1>
+          <p className="font-mono text-xs text-stone-500">{alert.alert_number} · {alert.alert_type}</p>
         </div>
         <div className="flex items-center gap-2">
           <Badge className={sevStyle(alert.severity)}>{alert.severity}</Badge>
@@ -67,10 +67,10 @@ export default function Investigation() {
             {signalsQ.data?.length ? (
               <div className="space-y-2">
                 {signalsQ.data.map((s) => (
-                  <div key={s.id} className="flex items-start justify-between rounded-lg bg-slate-50 px-3 py-2">
+                  <div key={s.id} className="flex items-start justify-between rounded-lg bg-stone-900/[0.03] px-3 py-2">
                     <div>
-                      <div className="text-sm font-medium text-slate-700">{s.signal_type}</div>
-                      <div className="text-xs text-slate-500">{s.description}</div>
+                      <div className="text-sm font-medium text-stone-700">{s.signal_type}</div>
+                      <div className="text-xs text-stone-500">{s.description}</div>
                     </div>
                     <Badge className={sevStyle(s.severity)}>{s.severity}</Badge>
                   </div>
@@ -83,9 +83,9 @@ export default function Investigation() {
             {claimable ? (
               <EmptyState message="Claim this alert before reporting." />
             ) : !mine ? (
-              <p className="text-sm text-slate-500">Claimed by another analyst ({alert.claimed_by?.slice(0, 8)}…). Only the claimant can report.</p>
+              <p className="text-sm text-stone-500">Claimed by another analyst ({alert.claimed_by?.slice(0, 8)}…). Only the claimant can report.</p>
             ) : !canReport ? (
-              <p className="text-sm text-slate-500">Report already submitted — alert is {alert.status}.</p>
+              <p className="text-sm text-stone-500">Report already submitted — alert is {alert.status}.</p>
             ) : (
               <div className="space-y-3">
                 <Field label="Investigation summary">
@@ -115,9 +115,9 @@ export default function Investigation() {
               <Button variant="primary" loading={busy} onClick={() => act(() => api.claimAlert(alertId))}>Claim for investigation</Button>
             ) : (
               <div className="text-sm">
-                <div className="text-slate-500">Claimed by</div>
+                <div className="text-stone-500">Claimed by</div>
                 <div className="font-mono text-xs">{alert.claimed_by?.slice(0, 12)}…{mine && <Badge className="ml-2 bg-emerald-100 text-emerald-700">you</Badge>}</div>
-                <div className="mt-1 text-xs text-slate-400">{dt(alert.claimed_at)}</div>
+                <div className="mt-1 text-xs text-stone-400">{dt(alert.claimed_at)}</div>
               </div>
             )}
           </Card>
@@ -126,14 +126,14 @@ export default function Investigation() {
             {reports?.length ? (
               <ul className="space-y-2 text-sm">
                 {reports.map((r) => (
-                  <li key={r.id} className="rounded-lg bg-slate-50 px-3 py-2">
-                    <Badge className="bg-slate-200 text-slate-700">{r.recommendation}</Badge>
-                    <div className="mt-1 text-xs text-slate-500">{r.investigation_summary}</div>
-                    <div className="text-xs text-slate-400">{dt(r.created_at)}</div>
+                  <li key={r.id} className="rounded-lg bg-stone-900/[0.03] px-3 py-2">
+                    <Badge className="bg-stone-900/10 text-stone-700">{r.recommendation}</Badge>
+                    <div className="mt-1 text-xs text-stone-500">{r.investigation_summary}</div>
+                    <div className="text-xs text-stone-400">{dt(r.created_at)}</div>
                   </li>
                 ))}
               </ul>
-            ) : <span className="text-xs text-slate-400">No reports yet.</span>}
+            ) : <span className="text-xs text-stone-400">No reports yet.</span>}
           </Card>
         </div>
       </div>

@@ -3,4 +3,36 @@
 @tailwind utilities;
 
 html, body, #root { height: 100%; }
-body { @apply bg-slate-50 text-slate-800 antialiased; }
+body {
+  @apply text-stone-800 antialiased;
+  /* Warm "dossier" backdrop — manila blobs + a faint amber glow over paper,
+     sampled from the palette image (manila #d0c0a0, cream #e0d0b0). */
+  background:
+    radial-gradient(50rem 34rem at 85% -10%, rgb(208 192 160 / 0.55), transparent 60%),
+    radial-gradient(42rem 30rem at -10% 35%, rgb(224 208 176 / 0.55), transparent 55%),
+    radial-gradient(36rem 36rem at 72% 108%, rgb(234 88 12 / 0.08), transparent 60%),
+    #f5f1e8;
+  background-attachment: fixed;
+}
+
+/* Quiet scrollbars in warm stone so long queues/tables don't feel heavy. */
+* { scrollbar-width: thin; scrollbar-color: rgb(214 205 188) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: rgb(214 205 188); border-radius: 9999px; }
+*::-webkit-scrollbar-thumb:hover { background: rgb(168 162 158); }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* Accessible focus ring — bronze, matching the brand ramp. */
+:focus-visible { outline: none; box-shadow: 0 0 0 3px rgb(177 138 69 / 0.4); border-radius: 0.5rem; }
+
+@layer components {
+  /* The one glass recipe: clean frosted blur, hairline light border, soft lift.
+     Every surface (cards, sidebar, modals) uses this so the blur reads uniform. */
+  .glass {
+    @apply rounded-2xl border border-white/60 bg-white/55 shadow-glass backdrop-blur-xl;
+  }
+}
+
+@layer utilities {
+  .page-enter { animation: fade-in 0.25s ease-out; }
+}

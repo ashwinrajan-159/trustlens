@@ -32,6 +32,8 @@ second opinion (never the final word).
 - [Testing & quality](#testing--quality)
 - [API surface](#api-surface)
 - [Security & compliance](#security--compliance)
+- [Deployment (single-host / EC2)](#deployment-single-host--ec2)
+- [Troubleshooting](#troubleshooting)
 - [Offline / air-gapped operation](#offline--air-gapped-operation)
 
 ---
@@ -248,7 +250,9 @@ python -c "import asyncio; from app.services.storage import StorageService; asyn
 
 # 4. API + worker  (two terminals)
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-celery -A app.worker.celery_app worker --pool=solo --loglevel=info     # --pool=solo on Windows; prefork on Linux
+# The worker MUST consume both queues — OCR (the pipeline's first step) routes to `ocr`,
+# everything else to `default`. Omitting -Q leaves documents stuck at QUEUED forever.
+celery -A app.worker.celery_app worker -Q ocr,default --pool=solo --loglevel=info   # --pool=solo on Windows; prefork on Linux
 
 # 5. Frontend  (third terminal)
 cd frontend && npm install && npm run dev
@@ -257,17 +261,27 @@ cd frontend && npm install && npm run dev
 Open **http://localhost:5173**. API docs at **http://localhost:8000/docs**; health at
 **http://localhost:8000/api/v1/health/ready**.
 
-> The Vite dev server proxies `/api` → `http://localhost:8000`, so the SPA is same-origin in dev
-> (no CORS setup needed). MinIO console is on **http://localhost:9001** (API on `:9000`).
+> **Connecting the SPA to the API.** The frontend reads its API base URL from `VITE_API_BASE`
+> (see `frontend/src/api/client.js`). With no `.env`, it defaults to the relative path `/api/v1`,
+> which only works if the API is same-origin. For local dev against a local API, create
+> `frontend/.env.local` with `VITE_API_BASE=http://localhost:8000/api/v1`; against a remote box,
+> point it at that host (e.g. `http://<server-ip>:8000/api/v1`). **Vite only reads env files at
+> startup — restart `npm run dev` after changing it.** Add the SPA's origin to `CORS_ORIGINS` on
+> the API. MinIO console is on **http://localhost:9001** (API on `:9000`).
 
 **Run everything in containers instead** (API + worker + infra):
 
 ```bash
-docker compose up -d --build              # builds api+worker images, runs migrations, starts the stack
-docker compose --profile workers up -d    # also start the Celery worker service
-docker compose logs -f api
-docker compose down                       # stop (add -v to wipe data volumes)
+docker compose up -d --build   # builds api+worker images, runs migrations, starts postgres,
+                               # redis, minio, api and the worker (consuming ocr,default)
+docker compose ps              # all services should be Up; worker consumes queues ocr,default
+docker compose logs -f worker  # watch the analysis pipeline process documents
+docker compose down            # stop (add -v to wipe data volumes)
 ```
+
+> Set a stable `FERNET_KEY` in `.env` **before** first run (see Configuration). Without it every
+> container generates a throwaway key on boot, so PII encrypted by one process can't be decrypted
+> by the next — extracted PANs/Aadhaar read back empty and the entity graph shows no links.
 
 ---
 
@@ -322,13 +336,17 @@ The compose `migrate` service runs `alembic upgrade head` to completion before `
 ```bash
 cd frontend
 npm install            # React 19, Vite, Tailwind, React Router, lucide-react
-npm run dev            # dev server with HMR at http://localhost:5173 (proxies /api → :8000)
+npm run dev            # dev server with HMR at http://localhost:5173
 npm run build          # production bundle → frontend/dist/
 npm run preview        # serve the production build locally
 ```
 
-To point the SPA at a non-default API origin, set `VITE_API_TARGET` (dev proxy target) or
-`VITE_API_BASE` (the API path prefix, default `/api/v1`). The production `dist/` is static.
+**Pointing at the API.** `VITE_API_BASE` (in `frontend/.env.local`) is the full API base the SPA
+calls; path helpers in `src/api/endpoints.js` are appended to it, so it must include the `/api/v1`
+prefix — e.g. `VITE_API_BASE=http://localhost:8000/api/v1` for a local API, or
+`http://<server-ip>:8000/api/v1` for a remote one. If unset it defaults to the relative `/api/v1`
+(same-origin only). Vite bakes env vars at startup, so **restart the dev server after editing it**,
+and add the SPA origin to the API's `CORS_ORIGINS`. The production `dist/` is static.
 
 **How the SPA connects:** a single API client (`src/api/client.js`) holds the JWT, performs a
 transparent refresh-and-retry on `401`, surfaces the backend error envelope, and (for the PDF report)
@@ -365,7 +383,7 @@ All settings come from the environment (or a local `.env`; see `.env.example`). 
 | `ENVIRONMENT` | `development` / `staging` / `production` | `development` |
 | `DATABASE_URL` | async Postgres DSN | `postgresql+asyncpg://trustlens:trustlens@localhost:5432/trustlens` |
 | `JWT_SECRET` | JWT signing secret (≥32 chars in prod) | — (required) |
-| `FERNET_KEY` | field-encryption key (use KMS/HSM in prod) | — (ephemeral in dev if unset) |
+| `FERNET_KEY` | field-encryption key for PII at rest (use KMS/HSM in prod). **Set a stable value even in dev** — if unset, each process generates a throwaway key, so data encrypted by one process (e.g. the worker) can't be decrypted by another (e.g. the API): PANs/Aadhaar read back empty and the entity graph stays empty. Generate: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` | — (ephemeral per-process if unset — **do not rely on this**) |
 | `STORAGE_ENDPOINT_URL` / `STORAGE_*` | MinIO/S3 object storage | `http://localhost:9000`, `minioadmin` |
 | `REDIS_URL` / `CELERY_BROKER_URL` | Redis broker | `redis://localhost:6379` |
 | `EVENTS_BACKEND` | `memory` (dev) or `kafka` (prod) | `memory` |
@@ -428,6 +446,78 @@ Full interactive docs: **`/docs`** (OpenAPI). Sensitive fields are masked in eve
   Explainability Report (reproducible via engine + weight-config versions; audit-chain attested).
 - **DPDP Act 2023** — explicit consent capture/withdrawal and a documented retention/erasure policy
   (`RETENTION.md`) that preserves the immutable audit trail.
+
+---
+
+## Deployment (single-host / EC2)
+
+The stack ships as a self-contained `docker compose` deployment — suitable for a single VM
+(e.g. an EC2 `t3.large`) or an on-prem host. From a clone of the repo on the server:
+
+```bash
+# 1. One-time: create .env with production values (never commit it)
+cp .env.example .env
+#    REQUIRED, non-negotiable:
+#      ENVIRONMENT=production
+#      JWT_SECRET=<≥32 random chars>
+#      FERNET_KEY=<python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())">
+#      CORS_ORIGINS=<the exact origin the SPA is served from, e.g. http://13.222.59.168:5173>
+#    In production the API refuses to start if JWT_SECRET is weak, FERNET_KEY is unset, or CORS is *.
+
+# 2. Build + run the whole stack (postgres, redis, minio, api, worker + one-shot migrate)
+docker compose up -d --build
+docker compose ps               # confirm every service is Up; worker must show queues ocr,default
+
+# 3. Smoke-test
+curl -s http://localhost:8000/api/v1/health/ready
+```
+
+**Networking:** open the API port (`8000`) — and, if the SPA is served from the same box, the
+frontend port — in the instance's security group. Keep Postgres (`5432`), Redis (`6379`) and MinIO
+(`9000/9001`) **closed to the internet**; they're only reached over the compose network.
+
+**Frontend:** either build it (`npm run build`) and serve `frontend/dist/` as static files behind a
+web server, or run the Vite dev server. Either way set `VITE_API_BASE` to the API's public base
+(`http://<server-ip>:8000/api/v1`) and add that SPA origin to `CORS_ORIGINS`.
+
+**Users:** the database starts empty. Create the first analyst/admin directly (there is no public
+"become an analyst" flow — customers self-register as `CUSTOMER`):
+
+```python
+# docker compose exec -T api python
+import asyncio, secrets, string
+from sqlalchemy import select
+from app.database import SessionFactory
+from app.models.user import User
+from app.models.enums import UserRole
+from app.core.security import hash_password
+pw = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(16))
+async def main():
+    async with SessionFactory() as s:
+        s.add(User(email="analyst@trustlens.ai", full_name="Analyst",
+                   hashed_password=hash_password(pw), role=UserRole.ANALYST,
+                   is_active=True, mfa_enabled=False))
+        await s.commit()
+    print("analyst@trustlens.ai", pw)
+asyncio.run(main())
+```
+
+> Use a real, resolvable email domain — the login schema validates `EmailStr`, which rejects
+> reserved TLDs like `.local`.
+
+---
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Documents stay **QUEUED**, never PROCESSED | Worker not consuming the `ocr` queue (OCR is the pipeline's first step and routes to `ocr`) | Run the worker with `-Q ocr,default`; confirm `docker compose logs worker` shows both queues under `[queues]` |
+| Worker crashes with **"Future attached to a different loop"** | Each Celery task runs in a fresh asyncio loop, but the async DB engine pools connections pinned to the loop that created them | The worker uses a `NullPool` engine when `WORKER_PROCESS=1` (set on the worker service); ensure that env var is present |
+| Extracted **PANs/Aadhaar read back empty**, entity graph shows 0 connections | Blank/ephemeral `FERNET_KEY` — data was encrypted with a key that later processes don't have, so decryption silently returns empty | Set a stable `FERNET_KEY` in `.env`, restart api + worker, and re-run extraction on affected documents |
+| SPA shows **"Failed to fetch"** on login | `VITE_API_BASE` unset or wrong (SPA calling `localhost` / the dev server instead of the API), or the SPA origin isn't in `CORS_ORIGINS` | Set `VITE_API_BASE` to the API base incl. `/api/v1`, restart Vite, add the origin to `CORS_ORIGINS` |
+| Login returns **422** on a valid-looking email | `EmailStr` rejects reserved TLDs (`.local`, etc.) | Use a resolvable domain (e.g. `.ai`, `.com`) |
+| **Senior Review** page errors for an analyst | `/reviews/queue` requires SENIOR_ANALYST/ADMIN (segregation of duties) — a plain ANALYST is correctly forbidden (403) | Expected; use a SENIOR_ANALYST account for that screen |
+| OCR task fails: **"value too long for type character varying(64)"** | An OCR engine wrote an over-length `model_version` | Fixed — engine/version strings are clamped to 64 chars; rebuild the worker image if running old code |
 
 ---
 

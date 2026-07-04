@@ -16,7 +16,7 @@ const DOC_GROUPS = [
 const DOC_CATEGORY = Object.fromEntries(
   DOC_GROUPS.flatMap((g) => g.types.map((t) => [t, g.group]))
 );
-const CAT_COLORS = { Identity: "#6366f1", Income: "#10b981", Property: "#f59e0b", Other: "#94a3b8" };
+const CAT_COLORS = { Identity: "#6366f1", Income: "#10b981", Property: "#f59e0b", Other: "#a8a29e" };
 
 function categoryCounts(docs) {
   const counts = { Identity: 0, Income: 0, Property: 0, Other: 0 };
@@ -42,14 +42,14 @@ function DocGraph({ docs }) {
   return (
     <div className="flex items-center gap-4">
       <svg width="120" height="120" viewBox="0 0 120 120" aria-label="Documents by category">
-        <circle cx={CX} cy={CY} r={R} fill="none" stroke="#f1f5f9" strokeWidth="14" />
+        <circle cx={CX} cy={CY} r={R} fill="none" stroke="#e7e5e4" strokeWidth="14" />
         {segs.map((s) => (
           <circle key={s.cat} cx={CX} cy={CY} r={R} fill="none" stroke={s.color} strokeWidth="14"
             strokeDasharray={s.dash} strokeDashoffset={s.off}
             transform={`rotate(-90 ${CX} ${CY})`} />
         ))}
-        <text x={CX} y={CY - 1} textAnchor="middle" fontSize="22" fontWeight="700" fill="#1e293b">{total}</text>
-        <text x={CX} y={CY + 16} textAnchor="middle" fontSize="9" fill="#94a3b8">
+        <text x={CX} y={CY - 1} textAnchor="middle" fontSize="22" fontWeight="700" fill="#292524">{total}</text>
+        <text x={CX} y={CY + 16} textAnchor="middle" fontSize="9" fill="#a8a29e">
           document{total > 1 ? "s" : ""}
         </text>
       </svg>
@@ -57,8 +57,8 @@ function DocGraph({ docs }) {
         {present.map(([cat, n]) => (
           <div key={cat} className="flex items-center gap-2">
             <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: CAT_COLORS[cat] }} />
-            <span className="text-slate-600">{cat}</span>
-            <span className="ml-3 font-medium text-slate-700">{n}</span>
+            <span className="text-stone-600">{cat}</span>
+            <span className="ml-3 font-medium text-stone-700">{n}</span>
           </div>
         ))}
       </div>
@@ -78,11 +78,11 @@ function RequirementsCard({ reqs }) {
               ? <CheckCircle2 size={15} className="shrink-0 text-emerald-500" />
               : g.required
                 ? <AlertCircle size={15} className="shrink-0 text-amber-500" />
-                : <Circle size={15} className="shrink-0 text-slate-300" />}
-            <span className={g.ok ? "text-slate-700" : "text-slate-500"}>{g.label}</span>
-            {!g.required && <span className="text-xs text-slate-400">(optional)</span>}
+                : <Circle size={15} className="shrink-0 text-stone-300" />}
+            <span className={g.ok ? "text-stone-700" : "text-stone-500"}>{g.label}</span>
+            {!g.required && <span className="text-xs text-stone-400">(optional)</span>}
             {g.present.length > 0 && (
-              <span className="ml-auto text-xs text-slate-400">{g.present.join(", ")}</span>
+              <span className="ml-auto text-xs text-stone-400">{g.present.join(", ")}</span>
             )}
           </li>
         ))}
@@ -161,10 +161,10 @@ export default function Apply() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-semibold text-slate-800">New loan application</h1>
+      <h1 className="text-2xl font-semibold text-stone-800">New loan application</h1>
       <div className="flex gap-2 text-sm">
         {["Loan details", "Documents", "Submit"].map((s, i) => (
-          <Badge key={s} className={step >= i + 1 ? "bg-brand-100 text-brand-700" : "bg-slate-100 text-slate-400"}>
+          <Badge key={s} className={step >= i + 1 ? "bg-brand-100/80 text-brand-700" : "bg-stone-900/5 text-stone-400"}>
             {i + 1}. {s}
           </Badge>
         ))}
@@ -216,7 +216,7 @@ export default function Apply() {
                 <DocGraph docs={uploaded} />
 
                 {/* Summary of what's been submitted */}
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-stone-500">
                   {uploaded.length} document{uploaded.length > 1 ? "s" : ""} attached to this draft —{" "}
                   {Object.entries(categoryCounts(uploaded))
                     .filter(([, n]) => n > 0)
@@ -228,11 +228,11 @@ export default function Apply() {
                 {/* List with per-document cancel/remove */}
                 <ul className="space-y-2">
                   {uploaded.map((d) => (
-                    <li key={d.id} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-sm">
+                    <li key={d.id} className="flex items-center justify-between gap-3 rounded-lg bg-stone-900/[0.03] px-3 py-2 text-sm">
                       <span className="flex min-w-0 items-center">
                         <CheckCircle2 size={14} className="mr-1 inline shrink-0 text-emerald-500" />
-                        <span className="font-medium text-slate-700">{d.document_type}</span>
-                        <span className="ml-2 truncate text-xs text-slate-400">{d.original_filename}</span>
+                        <span className="font-medium text-stone-700">{d.document_type}</span>
+                        <span className="ml-2 truncate text-xs text-stone-400">{d.original_filename}</span>
                       </span>
                       <button
                         type="button"
@@ -240,7 +240,7 @@ export default function Apply() {
                         disabled={busy}
                         title="Remove this document"
                         aria-label={`Remove ${d.document_type}`}
-                        className="shrink-0 rounded p-1 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                        className="shrink-0 rounded p-1 text-stone-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
                       >
                         <Trash2 size={15} />
                       </button>
@@ -248,7 +248,7 @@ export default function Apply() {
                   ))}
                 </ul>
               </div>
-            ) : <p className="text-sm text-slate-400">No documents uploaded yet.</p>}
+            ) : <p className="text-sm text-stone-400">No documents uploaded yet.</p>}
             <div className="mt-4">
               <Button
                 onClick={submitApp}
@@ -272,8 +272,8 @@ export default function Apply() {
         <Card>
           <div className="flex flex-col items-center gap-3 py-8 text-center">
             <CheckCircle2 size={40} className="text-emerald-500" />
-            <h2 className="text-lg font-semibold text-slate-800">Application submitted</h2>
-            <p className="max-w-md text-sm text-slate-500">
+            <h2 className="text-lg font-semibold text-stone-800">Application submitted</h2>
+            <p className="max-w-md text-sm text-stone-500">
               {app.application_number} is queued for the analysis pipeline (OCR → extraction → fraud →
               identity → property/financial → graph → risk). Results appear on the detail page as they complete.
             </p>

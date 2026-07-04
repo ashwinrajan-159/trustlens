@@ -25,7 +25,7 @@ export default function MLPlatform() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-semibold text-slate-800">ML platform <span className="text-sm font-normal text-slate-400">· advisory second opinion</span></h1>
+      <h1 className="text-2xl font-semibold text-stone-800">ML platform <span className="text-sm font-normal text-stone-400">· advisory second opinion</span></h1>
       <ErrorBanner error={error || err} />
 
       <div className="flex flex-wrap items-center gap-3">
@@ -38,8 +38,8 @@ export default function MLPlatform() {
       <Card title="Model registry">
         {loading ? <Spinner /> : models?.length ? (
           <table className="w-full text-sm">
-            <thead className="text-left text-xs uppercase text-slate-400"><tr><th className="py-2">Model</th><th>Algo</th><th>Status</th><th>PR-AUC</th><th>FPR</th><th>Champion</th><th></th></tr></thead>
-            <tbody className="divide-y divide-slate-100">
+            <thead className="text-left text-xs uppercase text-stone-400"><tr><th className="py-2">Model</th><th>Algo</th><th>Status</th><th>PR-AUC</th><th>FPR</th><th>Champion</th><th></th></tr></thead>
+            <tbody className="divide-y divide-stone-900/10">
               {models.map((m) => (
                 <tr key={m.id}>
                   <td className="py-2">{m.name} v{m.version}</td>
@@ -50,7 +50,7 @@ export default function MLPlatform() {
                   <td>{m.is_champion ? "★" : ""}</td>
                   <td className="space-x-2 text-right text-xs">
                     {isSenior && m.status === "TRAINED" && (
-                      <button className="text-brand-600" onClick={() => run(() => api.mlApprove(m.id))}>Approve</button>
+                      <button className="text-brand-700" onClick={() => run(() => api.mlApprove(m.id))}>Approve</button>
                     )}
                     {isSenior && m.status === "APPROVED" && (
                       <button className="text-emerald-600" onClick={() => run(() => api.mlPromote(m.id))}>Promote</button>
@@ -75,7 +75,7 @@ export default function MLPlatform() {
           <div className="mt-3 text-sm">
             Fraud probability <b>{(pred.fraud_probability * 100).toFixed(1)}%</b> · tier {pred.risk_tier} · {pred.latency_ms}ms
             {pred.shap_top?.length ? (
-              <ul className="mt-1 text-xs text-slate-500">{pred.shap_top.map((c) => <li key={c.feature}>{c.feature}: {c.contribution}</li>)}</ul>
+              <ul className="mt-1 text-xs text-stone-500">{pred.shap_top.map((c) => <li key={c.feature}>{c.feature}: {c.contribution}</li>)}</ul>
             ) : null}
           </div>
         )}
