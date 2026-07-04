@@ -8,7 +8,7 @@ making redelivery safe (every task is idempotent). Tasks are registered by impor
 from __future__ import annotations
 
 from celery import Celery
-from celery.signals import worker_ready
+from celery.signals import worker_process_init, worker_ready
 
 from app.config import settings
 
@@ -69,12 +69,24 @@ celery_app.conf.update(
 )
 
 
-@worker_ready.connect
-def _init_realtime(**_):  # pragma: no cover - runs only inside a live worker
-    """Subscribe the real-time engine + install the alert escalation hook so risk
-    events emitted by pipeline tasks turn into fraud alerts inside the worker too."""
+def _wire_realtime():  # pragma: no cover - runs only inside a live worker
     from app.events.consumer import get_realtime_engine
     from app.services.alerting import install_escalation_hook
 
     get_realtime_engine()
     install_escalation_hook()
+
+
+@worker_ready.connect
+def _init_realtime(**_):  # pragma: no cover
+    """Solo/threads pools: tasks run in the main worker process — subscribe here."""
+    _wire_realtime()
+
+
+@worker_process_init.connect
+def _init_realtime_child(**_):  # pragma: no cover
+    """Prefork pool: tasks run in forked children, each with its OWN in-process event
+    bus. worker_ready only fires in the parent, so without this hook the children
+    publish RISK_CALCULATED/FRAUD_RING_DETECTED events to a bus with no subscriber
+    and no alert is ever raised. Subscribe in every child at fork time."""
+    _wire_realtime()
