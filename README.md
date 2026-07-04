@@ -261,13 +261,15 @@ cd frontend && npm install && npm run dev
 Open **http://localhost:5173**. API docs at **http://localhost:8000/docs**; health at
 **http://localhost:8000/api/v1/health/ready**.
 
-> **Connecting the SPA to the API.** The frontend reads its API base URL from `VITE_API_BASE`
-> (see `frontend/src/api/client.js`). With no `.env`, it defaults to the relative path `/api/v1`,
-> which only works if the API is same-origin. For local dev against a local API, create
-> `frontend/.env.local` with `VITE_API_BASE=http://localhost:8000/api/v1`; against a remote box,
-> point it at that host (e.g. `http://<server-ip>:8000/api/v1`). **Vite only reads env files at
-> startup — restart `npm run dev` after changing it.** Add the SPA's origin to `CORS_ORIGINS` on
-> the API. MinIO console is on **http://localhost:9001** (API on `:9000`).
+> **Connecting the SPA to the API — two modes.**
+> **(a) Frontend beside the API (same box):** no config needed. The SPA defaults to the relative
+> path `/api/v1`, and the Vite dev server proxies `/api` → `http://localhost:8000`
+> (see `vite.config.js`; override the target with `VITE_API_TARGET`). Same-origin, so no CORS.
+> **(b) Frontend on a different machine than the API:** set `VITE_API_BASE` in
+> `frontend/.env.local` to the API's full base **including** `/api/v1`
+> (e.g. `VITE_API_BASE=http://<server-ip>:8000/api/v1`) and add the SPA's origin to
+> `CORS_ORIGINS` on the API. **Vite only reads env files at startup — restart `npm run dev`
+> after changing it.** MinIO console is on **http://localhost:9001** (API on `:9000`).
 
 **Run everything in containers instead** (API + worker + infra):
 
@@ -341,12 +343,14 @@ npm run build          # production bundle → frontend/dist/
 npm run preview        # serve the production build locally
 ```
 
-**Pointing at the API.** `VITE_API_BASE` (in `frontend/.env.local`) is the full API base the SPA
-calls; path helpers in `src/api/endpoints.js` are appended to it, so it must include the `/api/v1`
-prefix — e.g. `VITE_API_BASE=http://localhost:8000/api/v1` for a local API, or
-`http://<server-ip>:8000/api/v1` for a remote one. If unset it defaults to the relative `/api/v1`
-(same-origin only). Vite bakes env vars at startup, so **restart the dev server after editing it**,
-and add the SPA origin to the API's `CORS_ORIGINS`. The production `dist/` is static.
+**Pointing at the API.** If unset, the SPA calls the relative `/api/v1`, which the Vite dev
+server proxies to `http://localhost:8000` (`vite.config.js`; target override: `VITE_API_TARGET`) —
+the right mode when the frontend runs beside the API. To point the SPA at an API on a *different*
+host, set `VITE_API_BASE` in `frontend/.env.local` to the full base including the `/api/v1` prefix
+(path helpers in `src/api/endpoints.js` are appended to it), e.g.
+`VITE_API_BASE=http://<server-ip>:8000/api/v1`, and add the SPA origin to the API's
+`CORS_ORIGINS`. Vite bakes env vars at startup, so **restart the dev server after editing it**.
+The production `dist/` is static.
 
 **How the SPA connects:** a single API client (`src/api/client.js`) holds the JWT, performs a
 transparent refresh-and-retry on `401`, surfaces the backend error envelope, and (for the PDF report)
