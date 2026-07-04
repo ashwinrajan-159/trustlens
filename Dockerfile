@@ -20,6 +20,12 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # (PyMuPDF only extracts embedded text from digital PDFs). Models download to
 # ~/.paddleocr on first use — bundle them into the image for air-gapped deploys.
 RUN pip install paddlepaddle==3.0.0 "paddleocr>=2.9,<3"
+# paddlepaddle imports setuptools at runtime (python-slim doesn't ship it), and
+# paddleocr pulls the GUI OpenCV build, which needs libxcb/X libs the server lacks —
+# swap every cv2 variant for the single headless-contrib build.
+RUN pip install setuptools \
+    && pip uninstall -y opencv-python opencv-contrib-python opencv-python-headless opencv-contrib-python-headless \
+    && pip install opencv-contrib-python-headless
 
 COPY . .
 
