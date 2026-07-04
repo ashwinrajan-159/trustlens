@@ -31,7 +31,12 @@ log = get_logger(__name__)
 
 
 async def _reuse_existing_text(session, document: Document) -> OcrResult | None:
-    """Find a prior OCR result for another document with the same checksum (de-dup)."""
+    """Find a prior OCR result for another document with the same checksum (de-dup).
+
+    Empty results are never reused: a prior run without a capable engine (e.g. an
+    image OCR'd before PaddleOCR was installed) stores "" — reusing it would pin the
+    document to that failure forever instead of retrying with the better engine.
+    """
     stmt = (
         select(OcrResult)
         .join(Document, OcrResult.document_id == Document.id)
@@ -39,6 +44,7 @@ async def _reuse_existing_text(session, document: Document) -> OcrResult | None:
             Document.checksum_sha256 == document.checksum_sha256,
             Document.id != document.id,
             OcrResult.deleted_at.is_(None),
+            OcrResult.raw_text != "",
         )
         .order_by(OcrResult.created_at.asc())
         .limit(1)
