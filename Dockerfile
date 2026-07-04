@@ -7,13 +7,19 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# System deps (psycopg/asyncpg build, healthcheck curl)
+# System deps (psycopg/asyncpg build, healthcheck curl, libgomp1 for paddlepaddle)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        build-essential curl \
+        build-essential curl libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
+
+# PaddleOCR — real OCR for scanned images (PAN/Aadhaar photos). Heavy native dep,
+# kept out of requirements.txt; without it image documents yield no text/entities
+# (PyMuPDF only extracts embedded text from digital PDFs). Models download to
+# ~/.paddleocr on first use — bundle them into the image for air-gapped deploys.
+RUN pip install paddlepaddle==3.0.0 "paddleocr>=2.9,<3"
 
 COPY . .
 

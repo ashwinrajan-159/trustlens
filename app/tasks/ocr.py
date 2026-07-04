@@ -84,7 +84,7 @@ async def run_ocr_pipeline_async(
                     text=reuse.raw_text,
                     confidence=reuse.confidence_score,
                     page_count=reuse.page_count,
-                    engine=f"{reuse.engine}+dedup",
+                    engine=f"{reuse.engine.split('+dedup')[0]}+dedup",  # don't stack +dedup on re-runs
                     model_version=reuse.model_version,
                     pages=reuse.pages_data or [],
                 )

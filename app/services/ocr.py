@@ -109,7 +109,20 @@ class PaddleOCREngine:
         if PaddleOCREngine._reader is None:
             from paddleocr import PaddleOCR
 
-            PaddleOCREngine._reader = PaddleOCR(use_angle_cls=True, lang="en", show_log=False)
+            # Constructor kwargs shifted across PaddleOCR releases (show_log removed
+            # in 2.8+, use_angle_cls renamed later) — degrade to what this version takes.
+            for kwargs in (
+                {"use_angle_cls": True, "lang": "en", "show_log": False},
+                {"use_angle_cls": True, "lang": "en"},
+                {"lang": "en"},
+            ):
+                try:
+                    PaddleOCREngine._reader = PaddleOCR(**kwargs)
+                    break
+                except (TypeError, ValueError):
+                    continue
+            if PaddleOCREngine._reader is None:
+                raise OcrError("PaddleOCR constructor rejected all known signatures")
         return PaddleOCREngine._reader
 
     def run(self, data: bytes, content_type: str) -> OcrOutput:  # pragma: no cover - needs native dep
@@ -133,7 +146,10 @@ class PaddleOCREngine:
 
         pages, chunks, confs = [], [], []
         for idx, img in enumerate(images):
-            result = reader.ocr(img, cls=True) or []
+            try:
+                result = reader.ocr(img, cls=True) or []
+            except TypeError:  # cls kwarg removed in newer releases
+                result = reader.ocr(img) or []
             lines = result[0] if result else []
             page_text = []
             for line in lines:
